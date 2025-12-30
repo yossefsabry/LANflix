@@ -95,6 +95,20 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
         
+        // 4. Network Speed (New)
+        lifecycleScope.launch {
+            viewModel.networkSpeed.collect { mbps ->
+                binding.tvStatSpeed.text = String.format("%.1f", mbps)
+            }
+        }
+        
+        // 5. Active Connections (New)
+        lifecycleScope.launch {
+            viewModel.activeConnections.collect { count ->
+                binding.tvStatActive.text = count.toString()
+            }
+        }
+        
         // Initial Log
         log("System initialized.")
     }

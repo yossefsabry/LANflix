@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
     <application
         android:name=".LANflixApplication"
@@ -41,6 +44,12 @@
         <activity android:name=".AppSettingsActivity" android:exported="false" />
         <activity android:name=".PrivacySecurityActivity" android:exported="false" />
         <activity android:name=".NetworkInfoActivity" android:exported="false" />
+
+        <service
+            android:name=".service.MediaServerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

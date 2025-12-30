@@ -183,7 +183,8 @@ class KtorMediaStreamingServer(
                                     
                                     override fun readFrom(): ByteReadChannel {
                                         val inputStream = appContext.contentResolver.openInputStream(targetFile.uri) ?: throw Exception("Cannot open stream")
-                                        return inputStream.toByteReadChannel()
+                                        val trackingStream = TrackingInputStream(inputStream)
+                                        return trackingStream.toByteReadChannel()
                                     }
                                 })
                             } else {
@@ -202,5 +203,35 @@ class KtorMediaStreamingServer(
     
     fun getServerUrl(ip: String): String {
         return "http://$ip:$port/"
+    }
+
+    companion object {
+        val activeConnections = java.util.concurrent.atomic.AtomicInteger(0)
+    }
+
+    private class TrackingInputStream(
+        private val wrapped: java.io.InputStream
+    ) : java.io.InputStream() {
+        
+        init {
+            activeConnections.incrementAndGet()
+        }
+
+        override fun read(): Int = wrapped.read()
+        override fun read(b: ByteArray): Int = wrapped.read(b)
+        override fun read(b: ByteArray, off: Int, len: Int): Int = wrapped.read(b, off, len)
+        override fun skip(n: Long): Long = wrapped.skip(n)
+        override fun available(): Int = wrapped.available()
+        override fun markSupported(): Boolean = wrapped.markSupported()
+        override fun mark(readlimit: Int) = wrapped.mark(readlimit)
+        override fun reset() = wrapped.reset()
+
+        override fun close() {
+            try {
+                wrapped.close()
+            } finally {
+                activeConnections.decrementAndGet()
+            }
+        }
     }
 }
