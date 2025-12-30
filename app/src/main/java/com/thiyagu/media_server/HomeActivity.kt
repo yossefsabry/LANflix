@@ -3,50 +3,42 @@ package com.thiyagu.media_server
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.card.MaterialCardView
+import androidx.lifecycle.lifecycleScope
+import com.thiyagu.media_server.data.UserPreferences
+import com.thiyagu.media_server.databinding.ActivityHomeBinding
+import kotlinx.coroutines.launch
 
 class HomeActivity : AppCompatActivity() {
 
-    private lateinit var tvUsername: TextView
+    private lateinit var binding: ActivityHomeBinding
+    private lateinit var userPreferences: UserPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_home)
+        binding = ActivityHomeBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        
+        userPreferences = UserPreferences(this)
 
-        tvUsername = findViewById(R.id.tv_username)
-        val btnProfile = findViewById<MaterialCardView>(R.id.btn_profile)
-        val cardHost = findViewById<MaterialCardView>(R.id.card_host)
-        val cardClient = findViewById<MaterialCardView>(R.id.card_client)
-
-        // Load Username
-        loadUsername()
+        // Reactive Username Loading
+        lifecycleScope.launch {
+            userPreferences.usernameFlow.collect { username ->
+                binding.tvUsername.text = username
+            }
+        }
 
         // Navigation
-        cardHost.setOnClickListener {
+        binding.cardHost.setOnClickListener {
             startActivity(Intent(this, StreamingActivity::class.java))
         }
 
-        cardClient.setOnClickListener {
+        binding.cardClient.setOnClickListener {
              startActivity(Intent(this, ClientActivity::class.java))
         }
         
-        btnProfile.setOnClickListener {
-            // TODO: Navigate to ProfileActivity
+        binding.btnProfile.setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Reload username when returning to this activity
-        loadUsername()
-    }
-
-    private fun loadUsername() {
-        val sharedPref = getSharedPreferences("LANflixPrefs", Context.MODE_PRIVATE)
-        val username = sharedPref.getString("username", "User")
-        tvUsername.text = username
     }
 }

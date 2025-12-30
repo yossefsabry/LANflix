@@ -10,8 +10,12 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.thiyagu.media_server.utils.VideoVisibilityManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MediaManagementActivity : AppCompatActivity() {
@@ -39,28 +43,28 @@ class MediaManagementActivity : AppCompatActivity() {
     }
 
     private fun loadVideos() {
-        val folderUriString = intent.getStringExtra("FOLDER_URI")
-        if (folderUriString != null) {
+        val folderUriString = intent.getStringExtra("FOLDER_URI") ?: return
+        
+        lifecycleScope.launch(Dispatchers.IO) {
             val folderUri = Uri.parse(folderUriString)
-            val files = DocumentFile.fromTreeUri(this, folderUri)?.listFiles()
+            val files = DocumentFile.fromTreeUri(this@MediaManagementActivity, folderUri)?.listFiles()
+            val newVideoList = mutableListOf<VideoItem>()
             
-            videoList.clear()
             files?.forEach { file ->
                 if (file.isFile) {
                     val name = file.name ?: ""
                     val lowerName = name.lowercase(Locale.getDefault())
                     if (lowerName.endsWith(".mp4") || lowerName.endsWith(".mkv") || lowerName.endsWith(".avi") || lowerName.endsWith(".mov")) {
-                        // For DocumentFile, the uri.path or uri.toString() might not be the absolute file path 
-                        // but VideoVisibilityManager needs a consistent ID. 
-                        // We will use the file name as ID for simplicity within a folder context, 
-                        // or better, the URI string if persistent permissions are used.
-                        // However, to match Ktor server which likely serves by name or uses real path,
-                        // let's use the name for now as the server is likely serving the same folder.
-                        videoList.add(VideoItem(name, file.length(), file.uri.toString()))
+                        newVideoList.add(VideoItem(name, file.length(), file.uri.toString()))
                     }
                 }
             }
-            adapter.notifyDataSetChanged()
+            
+            withContext(Dispatchers.Main) {
+                videoList.clear()
+                videoList.addAll(newVideoList)
+                adapter.notifyDataSetChanged()
+            }
         }
     }
 

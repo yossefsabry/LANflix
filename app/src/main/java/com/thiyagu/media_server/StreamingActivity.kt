@@ -15,14 +15,17 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.thiyagu.media_server.server.KtorMediaStreamingServer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.text.SimpleDateFormat
@@ -30,28 +33,11 @@ import java.util.Collections
 import java.util.Date
 import java.util.Locale
 
+import com.thiyagu.media_server.databinding.ActivityStreamingBinding
+
 class StreamingActivity : AppCompatActivity() {
 
-    private lateinit var btnStartServer: MaterialButton
-    private lateinit var btnRescan: MaterialButton
-    private lateinit var btnAddMedia: MaterialButton
-    private lateinit var btnLogs: MaterialButton
-    private lateinit var btnOpenDashboard: MaterialButton
-    
-    private lateinit var cardMediaCore: MaterialCardView
-    private lateinit var cardLogs: MaterialCardView
-    
-    private lateinit var statusBadge: TextView
-    private lateinit var statusDot: View
-    private lateinit var serverUrlText: TextView
-    private lateinit var logText: TextView
-
-    // Stats
-    private lateinit var uptimeText: TextView
-    private lateinit var loadText: TextView
-    private lateinit var speedText: TextView
-    private lateinit var libraryText: TextView
-    private lateinit var activeText: TextView
+    private lateinit var binding: ActivityStreamingBinding
 
     private var server: KtorMediaStreamingServer? = null
     private var selectedFolderUri: Uri? = null
@@ -64,38 +50,16 @@ class StreamingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_streaming)
-
-        initViews()
+        binding = ActivityStreamingBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        
         setupListeners()
         
         // Initial State
         updateStats(false)
         val ip = getLocalIpAddress() ?: "0.0.0.0"
-        serverUrlText.text = ip
+        binding.serverUrlText.text = ip
         log("System initialized. Local IP: $ip")
-    }
-
-    private fun initViews() {
-        btnStartServer = findViewById(R.id.btn_start_server)
-        btnRescan = findViewById(R.id.btn_rescan)
-        btnAddMedia = findViewById(R.id.btn_add_media)
-        btnLogs = findViewById(R.id.btn_logs)
-        btnOpenDashboard = findViewById(R.id.btn_open_dashboard)
-        
-        cardMediaCore = findViewById(R.id.card_media_core)
-        cardLogs = findViewById(R.id.card_logs)
-        
-        statusBadge = findViewById(R.id.status_badge)
-        statusDot = findViewById(R.id.status_dot)
-        serverUrlText = findViewById(R.id.server_url_text)
-        logText = findViewById(R.id.log_text)
-        
-        uptimeText = findViewById(R.id.tv_stat_uptime)
-        loadText = findViewById(R.id.tv_stat_load)
-        speedText = findViewById(R.id.tv_stat_speed)
-        libraryText = findViewById(R.id.tv_stat_library)
-        activeText = findViewById(R.id.tv_stat_active)
     }
 
     private fun setupListeners() {
@@ -106,9 +70,9 @@ class StreamingActivity : AppCompatActivity() {
             folderPickerLauncher.launch(intent)
         }
 
-        btnRescan.setOnClickListener { folderPickerAction() }
+        binding.btnRescan.setOnClickListener { folderPickerAction() }
         
-        btnAddMedia.setOnClickListener {
+        binding.btnAddMedia.setOnClickListener {
              if (selectedFolderUri == null) {
                  Toast.makeText(this, "Please select a media folder first", Toast.LENGTH_SHORT).show()
              } else {
@@ -118,20 +82,20 @@ class StreamingActivity : AppCompatActivity() {
              }
         }
         
-        btnLogs.setOnClickListener {
+        binding.btnLogs.setOnClickListener {
              isLogsExpanded = !isLogsExpanded
-             cardLogs.visibility = if (isLogsExpanded) View.VISIBLE else View.GONE
+             binding.cardLogs.visibility = if (isLogsExpanded) View.VISIBLE else View.GONE
         }
         
-        findViewById<View>(R.id.btn_back_dashboard).setOnClickListener {
+        binding.btnBackDashboard.setOnClickListener {
             finish()
         }
 
-        findViewById<View>(R.id.btn_profile).setOnClickListener {
+        binding.btnProfile.setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
         }
 
-        btnStartServer.setOnClickListener {
+        binding.btnStartServer.setOnClickListener {
             if (server != null) {
                 stopServer()
             } else {
@@ -139,7 +103,7 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
 
-        btnOpenDashboard.setOnClickListener {
+        binding.btnOpenDashboard.setOnClickListener {
             if (serverUrl.isNotEmpty()) {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(serverUrl))
                 startActivity(intent)
@@ -187,11 +151,11 @@ class StreamingActivity : AppCompatActivity() {
             setStatus(true)
             
             serverUrl = "http://$ip:8888"
-            serverUrlText.text = serverUrl
+            binding.serverUrlText.text = serverUrl
             log("Server started at $serverUrl")
             
             // Allow copying URL by clicking the text
-            serverUrlText.setOnClickListener {
+            binding.serverUrlText.setOnClickListener {
                  val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                  val clip = ClipData.newPlainText("Server URL", serverUrl)
                  clipboard.setPrimaryClip(clip)
@@ -219,37 +183,37 @@ class StreamingActivity : AppCompatActivity() {
 
     private fun setStatus(running: Boolean) {
         if (running) {
-            statusBadge.text = "ONLINE"
-            statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_primary))
-            statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
+            binding.statusBadge.text = "ONLINE"
+            binding.statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_primary))
+            binding.statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
             
-            btnStartServer.text = "Stop"
-            btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_pause)
-            btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface_hover)
+            binding.btnStartServer.text = "Stop"
+            binding.btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_pause)
+            binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface_hover)
             
-            btnOpenDashboard.isEnabled = true
-            btnOpenDashboard.alpha = 1.0f
+            binding.btnOpenDashboard.isEnabled = true
+            binding.btnOpenDashboard.alpha = 1.0f
         } else {
-            statusBadge.text = "OFFLINE"
-            statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_text_sub))
-            statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_text_sub)
+            binding.statusBadge.text = "OFFLINE"
+            binding.statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_text_sub))
+            binding.statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_text_sub)
             
-            btnStartServer.text = "Start"
-            btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_play_arrow)
-            btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
+            binding.btnStartServer.text = "Start"
+            binding.btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_play_arrow)
+            binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
             
-            serverUrlText.text = getLocalIpAddress() ?: "Offline"
-            serverUrlText.setOnClickListener(null)
+            binding.serverUrlText.text = getLocalIpAddress() ?: "Offline"
+            binding.serverUrlText.setOnClickListener(null)
             
-            btnOpenDashboard.isEnabled = false
-            btnOpenDashboard.alpha = 0.5f
+            binding.btnOpenDashboard.isEnabled = false
+            binding.btnOpenDashboard.alpha = 0.5f
         }
     }
 
     private fun log(message: String) {
         val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        val newLog = "> $timestamp: $message\n${logText.text}"
-        logText.text = newLog
+        val newLog = "> $timestamp: $message\n${binding.logText.text}"
+        binding.logText.text = newLog
     }
 
     // --- Helpers ---
@@ -287,7 +251,7 @@ class StreamingActivity : AppCompatActivity() {
                 } else {
                      String.format("%dm %ds", minutes, seconds)
                 }
-                uptimeText.text = timeString
+                binding.tvStatUptime.text = timeString
                 delay(1000) // Non-blocking delay
             }
         }
@@ -300,25 +264,44 @@ class StreamingActivity : AppCompatActivity() {
     
     private fun updateStats(isRunning: Boolean) {
         if (!isRunning) {
-            uptimeText.text = "0m"
-            loadText.text = "0%"
-            speedText.text = "0"
-            activeText.text = "0"
+            binding.tvStatUptime.text = "0m"
+            binding.tvStatLoad.text = "0%"
+            binding.tvStatSpeed.text = "0"
+            binding.tvStatActive.text = "0"
             // Keep library text as is if possible, or reset? Reset for now.
             // libraryText.text = "0 GB" 
         } else {
             // Mock Real Data for things we can't easily measure without root/natives
-            loadText.text = "4%" // Low load generally
-            speedText.text = "120" // Mbps placeholder
-            activeText.text = "0" // No session tracking implemented yet
+            binding.tvStatLoad.text = "4%" // Low load generally
+            binding.tvStatSpeed.text = "120" // Mbps placeholder
+            binding.tvStatActive.text = "0" // No session tracking implemented yet
         }
     }
     
     private fun updateLibrarySize(uri: Uri) {
-         // Calculating real folder size is heavy, for now just show a "Ready" state or basic count
-         // This needs proper DocumentsContract logic which is complex for a tree. 
-         // We'll set a placeholder or "Scanned"
-         libraryText.text = "Ready" 
+         binding.tvStatLibrary.text = "Scanning..."
+         lifecycleScope.launch(Dispatchers.IO) {
+             try {
+                 val dir = DocumentFile.fromTreeUri(applicationContext, uri)
+                 val files = dir?.listFiles() ?: emptyArray()
+                 
+                 // Count video files
+                 val videoCount = files.count { file ->
+                     if (file.isDirectory) return@count false
+                     val name = file.name?.lowercase() ?: ""
+                     name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".avi") || name.endsWith(".mov") || name.endsWith(".webm")
+                 }
+                 
+                 withContext(Dispatchers.Main) {
+                     binding.tvStatLibrary.text = "$videoCount Videos"
+                 }
+             } catch (e: Exception) {
+                 e.printStackTrace()
+                 withContext(Dispatchers.Main) {
+                     binding.tvStatLibrary.text = "Error"
+                 }
+             }
+         }
     }
     
     override fun onDestroy() {
