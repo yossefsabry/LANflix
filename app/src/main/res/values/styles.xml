@@ -1,0 +1,19 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/lanflix_primary</item>
+        <item name="colorPrimaryVariant">@color/lanflix_primary_dark</item>
+        <item name="colorOnPrimary">@color/lanflix_bg</item>
+        <item name="android:statusBarColor">@color/lanflix_bg</item>
+        <item name="android:windowBackground">@color/lanflix_bg</item>
+        <item name="android:navigationBarColor">@color/lanflix_surface</item>
+        <item name="android:textColorPrimary">@color/lanflix_text_main</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="CircleImage">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+</resources>

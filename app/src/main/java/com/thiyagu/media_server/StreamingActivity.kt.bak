@@ -1,0 +1,158 @@
+package com.thiyagu.media_server
+
+import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.net.wifi.WifiManager
+import android.os.Bundle
+import android.text.format.Formatter
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import com.thiyagu.media_server.server.KtorMediaStreamingServer
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class StreamingActivity : AppCompatActivity() {
+
+    private lateinit var btnStartServer: MaterialButton
+    private lateinit var btnBrowse: ExtendedFloatingActionButton
+    private lateinit var folderPathText: TextView
+    private lateinit var cardMediaCore: MaterialCardView
+    private lateinit var cardFolder: MaterialCardView
+    private lateinit var statusBadge: TextView
+    private lateinit var serverUrlText: TextView
+    private lateinit var logText: TextView
+    private lateinit var headerContainer: LinearLayout
+
+    private var server: KtorMediaStreamingServer? = null
+    private var selectedFolderUri: Uri? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_streaming)
+
+        initViews()
+        setupListeners()
+        log("System initialized...")
+    }
+
+    private fun initViews() {
+        btnStartServer = findViewById(R.id.btn_start_server)
+        btnBrowse = findViewById(R.id.btn_browse)
+        folderPathText = findViewById(R.id.folder_path_text)
+        cardMediaCore = findViewById(R.id.card_media_core)
+        cardFolder = findViewById(R.id.card_folder)
+        statusBadge = findViewById(R.id.status_badge)
+        serverUrlText = findViewById(R.id.server_url_text)
+        logText = findViewById(R.id.log_text)
+        headerContainer = findViewById(R.id.header_container)
+    }
+
+    private fun setupListeners() {
+        btnBrowse.setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            folderPickerLauncher.launch(intent)
+        }
+
+        btnStartServer.setOnClickListener {
+            if (server != null) {
+                stopServer()
+            } else {
+                startServer()
+            }
+        }
+    }
+
+    private val folderPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    // Ignore if already granted or failed
+                }
+                selectedFolderUri = uri
+                folderPathText.text = uri.path?.split(":")?.last() ?: "Selected Folder"
+                log("Media source updated: ${folderPathText.text}")
+            }
+        }
+    }
+
+    private fun startServer() {
+        if (selectedFolderUri == null) {
+            Toast.makeText(this, "Please select a media folder first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            server = KtorMediaStreamingServer(applicationContext, selectedFolderUri!!, 8888)
+            server?.start()
+            
+            setStatus(true)
+            log("Server started on port 8888")
+            
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val ipAddress = Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
+            val url = "http://$ipAddress:8888"
+            serverUrlText.text = url
+            
+            // Allow copying URL by clicking the text
+            serverUrlText.setOnClickListener {
+                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                 val clip = ClipData.newPlainText("Server URL", url)
+                 clipboard.setPrimaryClip(clip)
+                 Toast.makeText(this, "URL copied", Toast.LENGTH_SHORT).show()
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            log("Error starting server: ${e.message}")
+            setStatus(false)
+        }
+    }
+
+    private fun stopServer() {
+        server?.stop()
+        server = null
+        setStatus(false)
+        log("Server stopped.")
+    }
+
+    private fun setStatus(running: Boolean) {
+        if (running) {
+            statusBadge.text = "ONLINE"
+            statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_primary))
+            btnStartServer.text = "Stop Server"
+            btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface)
+        } else {
+            statusBadge.text = "OFFLINE"
+            statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_text_sub))
+            btnStartServer.text = "Start Server"
+            btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
+            serverUrlText.text = "127.0.0.1"
+            serverUrlText.setOnClickListener(null)
+        }
+    }
+
+    private fun log(message: String) {
+        val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        val newLog = "> $timestamp: $message\n${logText.text}"
+        logText.text = newLog
+    }
+}
