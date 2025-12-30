@@ -147,6 +147,8 @@
                     android:layout_marginEnd="8dp"/>
                 
                 <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:text="Connected to: Local Network"
                     android:textColor="@color/lanflix_text_sub"
                     android:textSize="12sp"/>
