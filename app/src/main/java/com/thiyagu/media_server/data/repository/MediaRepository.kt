@@ -7,6 +7,7 @@ import com.thiyagu.media_server.data.db.MediaDao
 import com.thiyagu.media_server.model.MediaFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class MediaRepository(
@@ -21,22 +22,39 @@ class MediaRepository(
             val tree = DocumentFile.fromTreeUri(context, folderUri) ?: return@withContext
             val files = tree.listFiles()
             
-            val mediaFiles = files.filter { 
+            // 1. Get current DB state
+            val currentDbFiles = mediaDao.getAllMedia().first()
+            val dbPaths = currentDbFiles.map { it.path }.toSet()
+            
+            // 2. Process scanned files
+            val scannedFiles = files.filter { 
                 !it.isDirectory && isValidVideoFile(it.name) 
             }.map { file ->
                 MediaFile(
                     name = file.name ?: "Unknown",
                     path = file.uri.toString(),
                     size = file.length(),
-                    duration = 0L, // Duration extraction would require MediaMetadataRetriever (slow)
+                    duration = 0L, 
                     mimeType = file.type ?: "video/*",
                     dateAdded = System.currentTimeMillis()
                 )
             }
+            val scannedPaths = scannedFiles.map { it.path }.toSet()
             
-            // Sync with DB: Clear old and insert new (simplest sync strategy)
-            mediaDao.clearAll()
-            mediaDao.insertAll(mediaFiles)
+            // 3. Diffing Strategy
+            // Insert only new files (path not in DB)
+            val toInsert = scannedFiles.filter { it.path !in dbPaths }
+            
+            // Delete only missing files (path in DB but not in Scan)
+            val toDelete = currentDbFiles.filter { it.path !in scannedPaths }
+            
+            // 4. Apply Updates
+            if (toInsert.isNotEmpty()) {
+                mediaDao.insertAll(toInsert)
+            }
+            if (toDelete.isNotEmpty()) {
+                mediaDao.deleteAll(toDelete)
+            }
         }
     }
     

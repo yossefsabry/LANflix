@@ -1,6 +1,5 @@
 package com.thiyagu.media_server
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -8,20 +7,18 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.thiyagu.media_server.data.UserPreferences
 import com.thiyagu.media_server.databinding.ActivityProfileBinding
 import com.thiyagu.media_server.databinding.DialogEditUsernameBinding
 import com.thiyagu.media_server.databinding.ItemProfileOptionBinding
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
+import com.thiyagu.media_server.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.lang.Exception
 
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
-    private lateinit var userPreferences: UserPreferences
+    private val viewModel: ProfileViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,11 +27,9 @@ class ProfileActivity : AppCompatActivity() {
             binding = ActivityProfileBinding.inflate(layoutInflater)
             setContentView(binding.root)
             
-            userPreferences = UserPreferences(this)
-
             // Reactive Username Loading
             lifecycleScope.launch {
-                userPreferences.usernameFlow.collect { username ->
+                viewModel.username.collect { username ->
                     binding.profileUsername.text = username
                 }
             }
@@ -71,10 +66,7 @@ class ProfileActivity : AppCompatActivity() {
         val dialogBinding = DialogEditUsernameBinding.inflate(layoutInflater)
         
         // Pre-fill with current username
-        lifecycleScope.launch {
-            val currentUsername = userPreferences.usernameFlow.first()
-            dialogBinding.usernameInput.setText(currentUsername)
-        }
+        dialogBinding.usernameInput.setText(viewModel.username.value)
         
         val dialog = AlertDialog.Builder(this)
             .setView(dialogBinding.root)
@@ -105,13 +97,9 @@ class ProfileActivity : AppCompatActivity() {
                 }
                 else -> {
                     // Save username
-                    lifecycleScope.launch {
-                        userPreferences.saveUsername(newUsername)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(this@ProfileActivity, "Username updated successfully", Toast.LENGTH_SHORT).show()
-                            dialog.dismiss()
-                        }
-                    }
+                    viewModel.updateUsername(newUsername)
+                    Toast.makeText(this@ProfileActivity, "Username updated successfully", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
                 }
             }
         }
@@ -127,21 +115,18 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun logout() {
-        lifecycleScope.launch {
-            userPreferences.clear()
-            withContext(Dispatchers.Main) {
-                // Navigate to WelcomeActivity (simulated) or just finish for now if it doesn't exist yet
-                try {
-                    val intent = Intent(this@ProfileActivity, Class.forName("com.thiyagu.media_server.WelcomeActivity"))
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                } catch (e: ClassNotFoundException) {
-                    Toast.makeText(this@ProfileActivity, "Logged out (Welcome screen not found)", Toast.LENGTH_SHORT).show()
-                    finish()
-                } catch (e: Exception) {
-                    finish()
-                }
-            }
+        viewModel.logout()
+        
+        // Navigate to WelcomeActivity (simulated) or just finish for now if it doesn't exist yet
+        try {
+            val intent = Intent(this@ProfileActivity, Class.forName("com.thiyagu.media_server.WelcomeActivity"))
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        } catch (e: ClassNotFoundException) {
+            Toast.makeText(this@ProfileActivity, "Logged out", Toast.LENGTH_SHORT).show()
+            finish()
+        } catch (e: Exception) {
+            finish()
         }
     }
 }

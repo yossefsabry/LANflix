@@ -1,29 +1,27 @@
 package com.thiyagu.media_server
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.thiyagu.media_server.data.UserPreferences
 import com.thiyagu.media_server.databinding.ActivityHomeBinding
+import com.thiyagu.media_server.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityHomeBinding
-    private lateinit var userPreferences: UserPreferences
+    private val viewModel: HomeViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        userPreferences = UserPreferences(this)
-
         // Reactive Username Loading
         lifecycleScope.launch {
-            userPreferences.usernameFlow.collect { username ->
+            viewModel.username.collect { username ->
                 binding.tvUsername.text = username
             }
         }

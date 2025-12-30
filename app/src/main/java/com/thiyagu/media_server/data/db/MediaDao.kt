@@ -22,6 +22,9 @@ interface MediaDao {
     @Delete
     suspend fun delete(mediaFile: MediaFile)
 
+    @Delete
+    suspend fun deleteAll(mediaFiles: List<MediaFile>)
+
     @Query("DELETE FROM media_files")
     suspend fun clearAll()
 }
