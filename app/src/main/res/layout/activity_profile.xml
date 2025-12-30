@@ -95,7 +95,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:padding="8dp"
-                        app:srcCompat="@drawable/ic_photo_camera"
+                        app:srcCompat="@drawable/ic_camera_alt"
                         app:tint="@android:color/black"/>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -157,16 +157,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="32dp"
-                android:divider="@drawable/empty_divider"
-                android:showDividers="middle">
-                
-                <!-- Helper for divider -->
-                <View
-                     android:id="@+id/empty_divider" 
-                     android:layout_width="match_parent" 
-                     android:layout_height="12dp" 
-                     android:visibility="gone"/>
+                android:layout_marginTop="32dp">
 
                 <include layout="@layout/item_profile_option"
                     android:id="@+id/opt_settings"

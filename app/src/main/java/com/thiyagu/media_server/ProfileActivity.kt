@@ -9,6 +9,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import java.lang.Exception
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -22,11 +23,12 @@ class ProfileActivity : AppCompatActivity() {
             val btnBack = findViewById<View>(R.id.btn_back)
             val btnLogout = findViewById<TextView>(R.id.btn_logout) 
             val btnDisconnect = findViewById<MaterialButton>(R.id.btn_disconnect)
-            val btnEdit = findViewById<ImageView>(R.id.btn_edit_username)
+            val btnEdit = findViewById<View>(R.id.btn_edit_username)
 
             val sharedPref = getSharedPreferences("LANflixPrefs", Context.MODE_PRIVATE)
             if (tvUsername != null) {
-                tvUsername.text = sharedPref.getString("username", "User")
+                // In a real app we'd get this from the pref, defaulting for now
+                tvUsername.text = sharedPref.getString("username", "localUser_99")
             }
 
             btnBack?.setOnClickListener { finish() }
@@ -43,13 +45,12 @@ class ProfileActivity : AppCompatActivity() {
             
             setupOption(R.id.opt_settings, R.drawable.ic_settings, "App Settings", "Playback, Theme, Notifications")
             setupOption(R.id.opt_privacy, R.drawable.ic_shield, "Privacy & Security", "History, Cache, Permissions")
-            setupOption(R.id.opt_network, R.drawable.ic_wifi, "Network Info", "192.168.1.5 • Port 8888")
+            setupOption(R.id.opt_network, R.drawable.ic_wifi, "Network Info", "192.168.1.45 • Port 8080")
             setupOption(R.id.opt_downloads, R.drawable.ic_download, "Local Downloads", "3.2 GB Used")
             
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Error loading profile: ${e.message}", Toast.LENGTH_LONG).show()
-            finish()
         }
     }
     
@@ -57,9 +58,14 @@ class ProfileActivity : AppCompatActivity() {
         val view = findViewById<View>(viewId)
         if (view == null) return
         
-        view.findViewById<ImageView>(R.id.icon)?.setImageResource(iconRes)
-        view.findViewById<TextView>(R.id.title)?.text = title
-        view.findViewById<TextView>(R.id.subtitle)?.text = subtitle
+        val iconView = view.findViewById<ImageView>(R.id.icon)
+        val titleView = view.findViewById<TextView>(R.id.title)
+        val subtitleView = view.findViewById<TextView>(R.id.subtitle)
+        
+        iconView?.setImageResource(iconRes)
+        titleView?.text = title
+        subtitleView?.text = subtitle
+        
         view.setOnClickListener {
             Toast.makeText(this, "Opening $title...", Toast.LENGTH_SHORT).show()
         }
@@ -72,9 +78,16 @@ class ProfileActivity : AppCompatActivity() {
             apply()
         }
         
-        val intent = Intent(this, WelcomeActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
+        // Navigate to WelcomeActivity (simulated) or just finish for now if it doesn't exist yet
+        try {
+            val intent = Intent(this, Class.forName("com.thiyagu.media_server.WelcomeActivity"))
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        } catch (e: ClassNotFoundException) {
+            Toast.makeText(this, "Logged out (Welcome screen not found)", Toast.LENGTH_SHORT).show()
+            finish()
+        } catch (e: Exception) {
+            finish()
+        }
     }
 }
