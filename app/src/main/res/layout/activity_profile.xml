@@ -177,12 +177,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"/>
-                    
-                <include layout="@layout/item_profile_option"
-                    android:id="@+id/opt_downloads"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"/>
             </LinearLayout>
 
             <Space

@@ -94,4 +94,20 @@ class ClientActivity : AppCompatActivity() {
             super.onBackPressed()
         }
     }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        
+        // Proper WebView cleanup to prevent memory leaks
+        webView.apply {
+            stopLoading()
+            loadUrl("about:blank")
+            clearHistory()
+            clearCache(true)
+            clearFormData()
+            onPause()
+            removeAllViews()
+            destroy()
+        }
+    }
 }

@@ -7,11 +7,16 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import java.lang.Exception
 
 class ProfileActivity : AppCompatActivity() {
+
+    private lateinit var tvUsername: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,17 +24,14 @@ class ProfileActivity : AppCompatActivity() {
         try {
             setContentView(R.layout.activity_profile)
 
-            val tvUsername = findViewById<TextView>(R.id.profile_username)
+            tvUsername = findViewById(R.id.profile_username)
             val btnBack = findViewById<View>(R.id.btn_back)
             val btnLogout = findViewById<TextView>(R.id.btn_logout) 
             val btnDisconnect = findViewById<MaterialButton>(R.id.btn_disconnect)
             val btnEdit = findViewById<View>(R.id.btn_edit_username)
 
-            val sharedPref = getSharedPreferences("LANflixPrefs", Context.MODE_PRIVATE)
-            if (tvUsername != null) {
-                // In a real app we'd get this from the pref, defaulting for now
-                tvUsername.text = sharedPref.getString("username", "localUser_99")
-            }
+            // Load and display username
+            loadUsername()
 
             btnBack?.setOnClickListener { finish() }
 
@@ -40,13 +42,18 @@ class ProfileActivity : AppCompatActivity() {
             }
             
             btnEdit?.setOnClickListener {
-                 Toast.makeText(this, "Edit Username feature coming soon", Toast.LENGTH_SHORT).show()
+                showEditUsernameDialog()
             }
             
-            setupOption(R.id.opt_settings, R.drawable.ic_settings, "App Settings", "Playback, Theme, Notifications")
-            setupOption(R.id.opt_privacy, R.drawable.ic_shield, "Privacy & Security", "History, Cache, Permissions")
-            setupOption(R.id.opt_network, R.drawable.ic_wifi, "Network Info", "192.168.1.45 • Port 8080")
-            setupOption(R.id.opt_downloads, R.drawable.ic_download, "Local Downloads", "3.2 GB Used")
+            setupOption(R.id.opt_settings, R.drawable.ic_settings, "App Settings", "Playback, Theme, Notifications") {
+                startActivity(Intent(this, AppSettingsActivity::class.java))
+            }
+            setupOption(R.id.opt_privacy, R.drawable.ic_shield, "Privacy & Security", "History, Cache, Permissions") {
+                startActivity(Intent(this, PrivacySecurityActivity::class.java))
+            }
+            setupOption(R.id.opt_network, R.drawable.ic_wifi, "Network Info", "192.168.1.45 • Port 8080") {
+                startActivity(Intent(this, NetworkInfoActivity::class.java))
+            }
             
         } catch (e: Exception) {
             e.printStackTrace()
@@ -54,7 +61,66 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
     
-    private fun setupOption(viewId: Int, iconRes: Int, title: String, subtitle: String) {
+    private fun loadUsername() {
+        val sharedPref = getSharedPreferences("LANflixPrefs", Context.MODE_PRIVATE)
+        tvUsername.text = sharedPref.getString("username", "localUser_99")
+    }
+    
+    private fun showEditUsernameDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_username, null)
+        val usernameInput = dialogView.findViewById<TextInputEditText>(R.id.username_input)
+        val usernameLayout = dialogView.findViewById<TextInputLayout>(R.id.username_input_layout)
+        
+        // Pre-fill with current username
+        val sharedPref = getSharedPreferences("LANflixPrefs", Context.MODE_PRIVATE)
+        usernameInput.setText(sharedPref.getString("username", "localUser_99"))
+        
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+        
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        dialogView.findViewById<MaterialButton>(R.id.btn_cancel).setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        dialogView.findViewById<MaterialButton>(R.id.btn_save).setOnClickListener {
+            val newUsername = usernameInput.text.toString().trim()
+            
+            // Validate username
+            when {
+                newUsername.isEmpty() -> {
+                    usernameLayout.error = "Username cannot be empty"
+                }
+                newUsername.length < 3 -> {
+                    usernameLayout.error = "Username must be at least 3 characters"
+                }
+                newUsername.length > 20 -> {
+                    usernameLayout.error = "Username must be 20 characters or less"
+                }
+                !newUsername.matches(Regex("^[a-zA-Z0-9_]+$")) -> {
+                    usernameLayout.error = "Only letters, numbers, and underscore allowed"
+                }
+                else -> {
+                    // Save username
+                    with(sharedPref.edit()) {
+                        putString("username", newUsername)
+                        apply()
+                    }
+                    
+                    // Update UI
+                    loadUsername()
+                    Toast.makeText(this, "Username updated successfully", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                }
+            }
+        }
+        
+        dialog.show()
+    }
+    
+    private fun setupOption(viewId: Int, iconRes: Int, title: String, subtitle: String, onClick: () -> Unit) {
         val view = findViewById<View>(viewId)
         if (view == null) return
         
@@ -66,9 +132,7 @@ class ProfileActivity : AppCompatActivity() {
         titleView?.text = title
         subtitleView?.text = subtitle
         
-        view.setOnClickListener {
-            Toast.makeText(this, "Opening $title...", Toast.LENGTH_SHORT).show()
-        }
+        view.setOnClickListener { onClick() }
     }
 
     private fun logout() {

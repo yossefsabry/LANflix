@@ -37,6 +37,9 @@
             android:name=".MediaManagementActivity"
             android:exported="false" />
         <activity android:name=".StreamingActivity" android:exported="false" />
+        <activity android:name=".AppSettingsActivity" android:exported="false" />
+        <activity android:name=".PrivacySecurityActivity" android:exported="false" />
+        <activity android:name=".NetworkInfoActivity" android:exported="false" />
 
     </application>
 

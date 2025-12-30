@@ -15,9 +15,14 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.thiyagu.media_server.server.KtorMediaStreamingServer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.text.SimpleDateFormat
@@ -54,8 +59,7 @@ class StreamingActivity : AppCompatActivity() {
     
     // Logic vars
     private var uptimeSeconds = 0L
-    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var uptimeRunnable: Runnable? = null
+    private var uptimeJob: kotlinx.coroutines.Job? = null
     private var serverUrl: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -270,8 +274,9 @@ class StreamingActivity : AppCompatActivity() {
     // Stats Logic
     private fun startUptimeCounter() {
         uptimeSeconds = 0
-        uptimeRunnable = object : Runnable {
-            override fun run() {
+        // Using lifecycleScope ensures coroutine is cancelled when activity is destroyed
+        uptimeJob = lifecycleScope.launch {
+            while (isActive) {
                 uptimeSeconds++
                 val hours = uptimeSeconds / 3600
                 val minutes = (uptimeSeconds % 3600) / 60
@@ -283,14 +288,14 @@ class StreamingActivity : AppCompatActivity() {
                      String.format("%dm %ds", minutes, seconds)
                 }
                 uptimeText.text = timeString
-                handler.postDelayed(this, 1000)
+                delay(1000) // Non-blocking delay
             }
         }
-        handler.post(uptimeRunnable!!)
     }
     
     private fun stopUptimeCounter() {
-        uptimeRunnable?.let { handler.removeCallbacks(it) }
+        uptimeJob?.cancel()
+        uptimeJob = null
     }
     
     private fun updateStats(isRunning: Boolean) {
@@ -314,5 +319,12 @@ class StreamingActivity : AppCompatActivity() {
          // This needs proper DocumentsContract logic which is complex for a tree. 
          // We'll set a placeholder or "Scanned"
          libraryText.text = "Ready" 
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Cleanup server and uptime counter
+        stopServer()
+        stopUptimeCounter()
     }
 }
