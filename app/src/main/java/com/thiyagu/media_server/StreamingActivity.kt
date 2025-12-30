@@ -109,6 +109,28 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
         
+        // 5. Active Connections (New)
+        lifecycleScope.launch {
+            viewModel.activeConnections.collect { count ->
+                binding.tvStatActive.text = count.toString()
+            }
+        }
+        
+        // 6. Saved Folder Persistence
+        lifecycleScope.launch {
+            viewModel.savedFolderUri.collect { uriString ->
+                if (!uriString.isNullOrEmpty()) {
+                    selectedFolderUri = Uri.parse(uriString)
+                    val folderName = try {
+                        Uri.parse(uriString).path?.split(":")?.last() ?: "Select Folder"
+                    } catch (e: Exception) { "Select Folder" }
+                    
+                    binding.btnAddMedia.text = folderName
+                    log("Loaded saved folder: $folderName")
+                }
+            }
+        }
+        
         // Initial Log
         log("System initialized.")
     }
@@ -155,12 +177,8 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
 
-        binding.btnOpenDashboard.setOnClickListener {
-            if (serverUrl.isNotEmpty()) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(serverUrl))
-                startActivity(intent)
-            }
-        }
+        // Dashboard button disabled
+        // binding.btnOpenDashboard.setOnClickListener { ... }
     }
 
     private val folderPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -175,7 +193,8 @@ class StreamingActivity : AppCompatActivity() {
                     // Ignore
                 }
                 selectedFolderUri = uri
-                log("Media source updated: ${uri.path?.split(":")?.last() ?: "Selected Folder"}")
+                // Log handled by observer
+                // log("Media source updated: ${uri.path?.split(":")?.last() ?: "Selected Folder"}")
                 Toast.makeText(this, "Library Updated", Toast.LENGTH_SHORT).show()
                 viewModel.rescanLibrary(uri)
             }
@@ -200,8 +219,11 @@ class StreamingActivity : AppCompatActivity() {
             binding.btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_pause)
             binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface_hover)
             
-            binding.btnOpenDashboard.isEnabled = true
-            binding.btnOpenDashboard.alpha = 1.0f
+            binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface_hover)
+            
+            // Dashboard button disabled as per request
+            binding.btnOpenDashboard.isEnabled = false
+            binding.btnOpenDashboard.alpha = 0.5f
             
             // Mock Stats
             binding.tvStatLoad.text = "4%" 

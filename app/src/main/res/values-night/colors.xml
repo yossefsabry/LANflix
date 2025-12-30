@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- LANflix Palette (Dark Mode) -->
+    <color name="lanflix_primary">#FAC638</color>
+    <color name="lanflix_primary_dark">#D4A526</color>
+    
+    <color name="lanflix_bg">#09090b</color>
+    <color name="lanflix_surface">#18181b</color>
+    <color name="lanflix_surface_light">#27272a</color>
+    <color name="lanflix_surface_hover">#3f3f46</color>
+    
+    <color name="lanflix_text_main">#FFFFFF</color>
+    <color name="lanflix_text_sub">#a1a1aa</color>
+    <color name="lanflix_bg_dark">#000000</color>
+    
+    <!-- Dark mode specific (Old names kept for compat if needed) -->
+    <color name="gradient_start">#0f0c29</color>
+    <color name="gradient_middle">#1a1a2e</color>
+    <color name="gradient_end">#16213e</color>
+    <color name="card_background">#1e1e2e</color>
+    <color name="card_border">#2a2a3e</color>
+    <color name="status_running">#4CAF50</color>
+    <color name="status_stopped">#757575</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="accent_purple">#667eea</color>
+</resources>

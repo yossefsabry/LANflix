@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="@color/lanflix_surface"
+    app:cardCornerRadius="12dp"
+    app:strokeColor="#1AFFFFFF"
+    app:strokeWidth="1dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_dns"
+            app:tint="@color/lanflix_primary"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="16dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_server_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LANflix Server"
+                android:textColor="@color/lanflix_text_main"
+                android:textStyle="bold"
+                android:textSize="14sp"/>
+
+            <TextView
+                android:id="@+id/tv_server_ip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="192.168.1.5"
+                android:textColor="@color/lanflix_text_sub"
+                android:textSize="12sp"
+                android:fontFamily="monospace"/>
+        </LinearLayout>
+        
+        <ImageView
+            android:id="@+id/iv_lock"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_lock"
+            app:tint="@color/lanflix_text_sub"
+            android:visibility="gone"/>
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/lanflix_text_sub"
+            android:layout_marginStart="8dp"/>
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

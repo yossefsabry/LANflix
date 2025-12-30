@@ -60,6 +60,9 @@ class ServerManager(private val context: Context) {
             val url = "http://$ip:$port"
             _state.value = ServerState.Running(url)
             
+            // Register NSD
+            registerService(port)
+            
         } catch (e: Exception) {
             e.printStackTrace()
             stopServer() // Cleanup will also stop service
@@ -68,6 +71,8 @@ class ServerManager(private val context: Context) {
     }
 
     fun stopServer() {
+        if (_state.value is ServerState.Stopped) return
+
         try {
             server?.stop()
         } catch (e: Exception) {
@@ -76,6 +81,9 @@ class ServerManager(private val context: Context) {
             server = null
             serverStartTime = 0L // Reset logic
             _state.value = ServerState.Stopped
+            
+            // Unregister NSD
+            unregisterService()
             
             // Stop Service
             val intent = Intent(context, MediaServerService::class.java)
@@ -103,5 +111,57 @@ class ServerManager(private val context: Context) {
             ex.printStackTrace()
         }
         return null
+    }
+
+    // --- NSD (Network Service Discovery) ---
+
+    private var registrationListener: android.net.nsd.NsdManager.RegistrationListener? = null
+
+    private fun registerService(port: Int) {
+        try {
+            val nsdManager = context.getSystemService(Context.NSD_SERVICE) as android.net.nsd.NsdManager
+            val serviceInfo = android.net.nsd.NsdServiceInfo().apply {
+                serviceName = "LANflix-${android.os.Build.MODEL}"
+                serviceType = "_lanflix._tcp"
+                setPort(port)
+                // In the future, we can add attributes here like:
+                // setAttribute("secured", "false")
+            }
+
+            registrationListener = object : android.net.nsd.NsdManager.RegistrationListener {
+                override fun onServiceRegistered(NsdServiceInfo: android.net.nsd.NsdServiceInfo) {
+                    // Save the registered name (it might change if conflict)
+                    // _serviceName = NsdServiceInfo.serviceName
+                }
+
+                override fun onRegistrationFailed(serviceInfo: android.net.nsd.NsdServiceInfo, errorCode: Int) {
+                   // Registration failed
+                }
+
+                override fun onServiceUnregistered(arg0: android.net.nsd.NsdServiceInfo) {
+                    // Service has been unregistered
+                }
+
+                override fun onUnregistrationFailed(serviceInfo: android.net.nsd.NsdServiceInfo, errorCode: Int) {
+                    // Unregistration failed
+                }
+            }
+
+            nsdManager.registerService(serviceInfo, android.net.nsd.NsdManager.PROTOCOL_DNS_SD, registrationListener)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun unregisterService() {
+        try {
+            if (registrationListener != null) {
+                val nsdManager = context.getSystemService(Context.NSD_SERVICE) as android.net.nsd.NsdManager
+                nsdManager.unregisterService(registrationListener)
+                registrationListener = null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

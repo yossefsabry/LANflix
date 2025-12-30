@@ -13,18 +13,42 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "us
 
 class UserPreferences(private val context: Context) {
 
+    suspend fun saveUsername(username: String) {
+        context.dataStore.edit { preferences ->
+            preferences[USERNAME_KEY] = username
+        }
+    }
+    
     companion object {
         val USERNAME_KEY = stringPreferencesKey("username")
+        val SELECTED_FOLDER_KEY = stringPreferencesKey("selected_folder_uri")
+        val THEME_KEY = stringPreferencesKey("app_theme") // system, light, dark
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
             preferences[USERNAME_KEY] ?: "User"
         }
+        
+    val selectedFolderFlow: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[SELECTED_FOLDER_KEY]
+        }
+        
+    val themeFlow: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[THEME_KEY] ?: "dark"
+        }
 
-    suspend fun saveUsername(username: String) {
+    suspend fun saveSelectedFolder(uri: String) {
         context.dataStore.edit { preferences ->
-            preferences[USERNAME_KEY] = username
+            preferences[SELECTED_FOLDER_KEY] = uri
+        }
+    }
+    
+    suspend fun saveTheme(theme: String) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_KEY] = theme
         }
     }
     

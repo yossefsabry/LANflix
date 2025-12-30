@@ -8,26 +8,31 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- LANflix Palette -->
+    <!-- LANflix Palette (Light Mode) -->
+    <!-- Primary can stay same, or be adjusted. Keeping same for brand identity -->
     <color name="lanflix_primary">#FAC638</color>
     <color name="lanflix_primary_dark">#D4A526</color>
-    <color name="lanflix_bg">#09090b</color>
-    <color name="lanflix_surface">#18181b</color>
-    <color name="lanflix_surface_light">#27272a</color>
-    <color name="lanflix_surface_hover">#27272a</color>
-    <color name="lanflix_text_main">#FFFFFFFF</color>
-    <color name="lanflix_text_sub">#a1a1aa</color>
-    <color name="lanflix_bg_dark">#231e0f</color>
     
-    <!-- Dark mode colors -->
-    <color name="gradient_start">#0f0c29</color>
-    <color name="gradient_middle">#1a1a2e</color>
-    <color name="gradient_end">#16213e</color>
-    <color name="card_background">#1e1e2e</color>
-    <color name="card_border">#2a2a3e</color>
+    <!-- Light Backgrounds -->
+    <color name="lanflix_bg">#F4F4F5</color>         
+    <color name="lanflix_surface">#FFFFFF</color>     
+    <color name="lanflix_surface_light">#E4E4E7</color> 
+    <color name="lanflix_surface_hover">#E4E4E7</color>
+    
+    <!-- Dark Text -->
+    <color name="lanflix_text_main">#09090b</color>
+    <color name="lanflix_text_sub">#52525b</color>
+    <color name="lanflix_bg_dark">#FFFFFF</color>
+    
+    <!-- Compat colors (Mapped to Light) -->
+    <color name="gradient_start">#FFFFFF</color>
+    <color name="gradient_middle">#F4F4F5</color>
+    <color name="gradient_end">#E4E4E7</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_border">#E4E4E7</color>
     <color name="status_running">#4CAF50</color>
     <color name="status_stopped">#757575</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#757575</color>
     <color name="accent_purple">#667eea</color>
 </resources>

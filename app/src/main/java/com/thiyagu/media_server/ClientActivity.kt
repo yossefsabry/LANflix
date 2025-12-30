@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 
@@ -17,16 +18,22 @@ class ClientActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var connectionContainer: LinearLayout
     private lateinit var loadingIndicator: ProgressBar
+    private lateinit var etIpAddress: TextInputEditText
+    private lateinit var rvServers: androidx.recyclerview.widget.RecyclerView
+    private lateinit var discoveryManager: com.thiyagu.media_server.server.ServerDiscoveryManager
+    private lateinit var serverAdapter: com.thiyagu.media_server.server.ServerAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_client)
 
-        val etIpAddress = findViewById<TextInputEditText>(R.id.et_ip_address)
+        etIpAddress = findViewById(R.id.et_ip_address)
         val btnConnect = findViewById<MaterialButton>(R.id.btn_connect)
         webView = findViewById(R.id.webview)
         connectionContainer = findViewById(R.id.connection_container)
         loadingIndicator = findViewById(R.id.loading_indicator)
+        rvServers = findViewById(R.id.rv_servers)
+        
         val btnBack = findViewById<android.view.View>(R.id.btn_back_home)
         
         btnBack.setOnClickListener {
@@ -44,8 +51,6 @@ class ClientActivity : AppCompatActivity() {
         // Configure WebView
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-        
-        // Force dark mode in WebView if supported, or let CSS handle it (CSS is already dark)
         
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -73,6 +78,69 @@ class ClientActivity : AppCompatActivity() {
                 loadUrl(url)
             }
         }
+        
+        // --- Server Discovery Setup ---
+        setupDiscovery()
+    }
+    
+    private fun setupDiscovery() {
+        discoveryManager = com.thiyagu.media_server.server.ServerDiscoveryManager(this)
+        serverAdapter = com.thiyagu.media_server.server.ServerAdapter { server ->
+            // Click Handler
+            if (server.isSecured) {
+                showPasswordDialog(server)
+            } else {
+                // Direct Connect
+                etIpAddress.setText(server.ip)
+                loadUrl("http://${server.ip}:${server.port}")
+            }
+        }
+        
+        rvServers.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+        rvServers.adapter = serverAdapter
+        
+        // Observe
+        lifecycleScope.launchWhenStarted {
+            discoveryManager.discoveredServers.collect { list ->
+                serverAdapter.submitList(list)
+            }
+        }
+    }
+    
+    private fun showPasswordDialog(server: com.thiyagu.media_server.server.DiscoveredServer) {
+        val input = com.google.android.material.textfield.TextInputEditText(this)
+        input.hint = "Password"
+        val layout = LinearLayout(this)
+        layout.setPadding(50, 20, 50, 20)
+        layout.addView(input)
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Password Required")
+            .setMessage("Enter password for ${server.name}")
+            .setView(layout)
+            .setPositiveButton("Connect") { _, _ ->
+                 val password = input.text.toString()
+                 // TODO: Verify password with server. 
+                 // For now, we assume success if password is "admin"
+                 if (password == "admin") {
+                     etIpAddress.setText(server.ip)
+                     loadUrl("http://${server.ip}:${server.port}")
+                 } else {
+                     Toast.makeText(this, "Incorrect Password", Toast.LENGTH_SHORT).show()
+                 }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        discoveryManager.startDiscovery()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        discoveryManager.stopDiscovery()
     }
 
     private fun loadUrl(url: String) {

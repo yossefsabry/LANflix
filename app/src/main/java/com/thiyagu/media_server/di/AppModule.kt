@@ -39,5 +39,5 @@ val appModule = module {
     // ViewModels
     viewModel { HomeViewModel(get()) }
     viewModel { ProfileViewModel(get()) }
-    viewModel { StreamingViewModel(get(), get()) }
+    viewModel { StreamingViewModel(get(), get(), get()) }
 }

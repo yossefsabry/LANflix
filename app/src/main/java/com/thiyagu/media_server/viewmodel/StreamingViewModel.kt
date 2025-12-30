@@ -18,10 +18,17 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+import com.thiyagu.media_server.data.UserPreferences
+
 class StreamingViewModel(
     private val serverManager: ServerManager,
-    private val mediaRepository: MediaRepository
+    private val mediaRepository: MediaRepository,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
+
+    // Saved Folder
+    val savedFolderUri: StateFlow<String?> = userPreferences.selectedFolderFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     // Server State
     val serverState: StateFlow<ServerState> = serverManager.state
@@ -64,6 +71,7 @@ class StreamingViewModel(
     
     fun rescanLibrary(folderUri: Uri) {
         viewModelScope.launch {
+            userPreferences.saveSelectedFolder(folderUri.toString())
             mediaRepository.scanAndSync(folderUri)
         }
     }

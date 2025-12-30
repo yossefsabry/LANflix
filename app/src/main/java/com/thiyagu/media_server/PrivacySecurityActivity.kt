@@ -17,47 +17,42 @@ class PrivacySecurityActivity : AppCompatActivity() {
 
         val btnBack = findViewById<View>(R.id.btn_back)
         btnBack?.setOnClickListener { finish() }
-
-        setupOption(R.id.opt_clear_history, R.drawable.ic_settings, "Clear Watch History", "Remove all viewing history") {
-            showClearHistoryDialog()
-        }
-        
-        setupOption(R.id.opt_clear_cache, R.drawable.ic_settings, "Clear Cache", "524 MB stored") {
-            showClearCacheDialog()
-        }
         
         setupOption(R.id.opt_permissions, R.drawable.ic_shield, "App Permissions", "Storage, Network") {
-            Toast.makeText(this, "Opening app permissions...", Toast.LENGTH_SHORT).show()
+            showAppPermissionsInfo()
         }
         
         setupOption(R.id.opt_privacy_policy, R.drawable.ic_shield, "Privacy Policy", "View our privacy policy") {
-            Toast.makeText(this, "Opening privacy policy...", Toast.LENGTH_SHORT).show()
+            showPrivacyPolicyInfo()
         }
     }
 
-    private fun showClearHistoryDialog() {
+    private fun showAppPermissionsInfo() {
         AlertDialog.Builder(this)
-            .setTitle("Clear Watch History")
-            .setMessage("Are you sure you want to clear all your watch history? This action cannot be undone.")
-            .setPositiveButton("Clear") { _, _ ->
-                Toast.makeText(this, "Watch history cleared", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
+            .setTitle("App Permissions")
+            .setMessage(
+                "LANflix requires the following permissions:\n\n" +
+                "• Storage: To access and stream your local media files\n" +
+                "• Network: To broadcast and connect to servers on your local network\n\n" +
+                "You can manage these permissions in your device settings."
+            )
+            .setPositiveButton("OK", null)
             .show()
     }
 
-    private fun showClearCacheDialog() {
+    private fun showPrivacyPolicyInfo() {
         AlertDialog.Builder(this)
-            .setTitle("Clear Cache")
-            .setMessage("This will clear 524 MB of cached data. The app may run slower until the cache is rebuilt.")
-            .setPositiveButton("Clear") { _, _ ->
-                Toast.makeText(this, "Cache cleared successfully", Toast.LENGTH_SHORT).show()
-                // Update the subtitle to show 0 MB
-                val view = findViewById<View>(R.id.opt_clear_cache)
-                val subtitleView = view.findViewById<TextView>(R.id.subtitle)
-                subtitleView?.text = "0 MB stored"
-            }
-            .setNegativeButton("Cancel", null)
+            .setTitle("Privacy Policy")
+            .setMessage(
+                "LANflix Privacy Summary:\n\n" +
+                "• All data stays on your local network\n" +
+                "• No data is sent to external servers\n" +
+                "• No tracking or analytics\n" +
+                "• No user data collection\n\n" +
+                "LANflix is a fully offline, privacy-focused local streaming application. " +
+                "Your media never leaves your network."
+            )
+            .setPositiveButton("OK", null)
             .show()
     }
 

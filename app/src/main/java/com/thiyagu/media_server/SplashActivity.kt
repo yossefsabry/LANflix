@@ -7,9 +7,16 @@ import android.os.Handler
 import android.view.View
 import com.thiyagu.media_server.databinding.ActivitySplashBinding
 
+import androidx.lifecycle.lifecycleScope
+import com.thiyagu.media_server.data.UserPreferences
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+
 class SplashActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivitySplashBinding;
+    private lateinit var binding: ActivitySplashBinding
+    private val userPreferences: UserPreferences by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,17 +30,18 @@ class SplashActivity : AppCompatActivity() {
     private fun checkNetworkAndProceed() {
         if (isNetworkAvailable()) {
             Handler().postDelayed({
-                // Check if user is logged in (has username)
-                val sharedPref = getSharedPreferences("LANflixPrefs", android.content.Context.MODE_PRIVATE)
-                val username = sharedPref.getString("username", null)
-
-                val intent = if (username.isNullOrEmpty()) {
-                    Intent(this, WelcomeActivity::class.java)
-                } else {
-                    Intent(this, HomeActivity::class.java)
+                // Check if user is logged in using DataStore
+                lifecycleScope.launch {
+                    val username = userPreferences.usernameFlow.first()
+                    
+                    val intent = if (username.isEmpty() || username == "User") {
+                        Intent(this@SplashActivity, WelcomeActivity::class.java)
+                    } else {
+                        Intent(this@SplashActivity, HomeActivity::class.java)
+                    }
+                    startActivity(intent)
+                    finish() // Prevent going back to splash
                 }
-                startActivity(intent)
-                finish() // Prevent going back to splash
             }, 3000)
         } else {
             showNoConnectionDialog()

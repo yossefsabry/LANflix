@@ -204,12 +204,12 @@
                             android:backgroundTint="#0DFFFFFF"
                             android:paddingHorizontal="16dp"
                             android:text="Stop"
-                            android:textColor="@color/white"
+                            android:textColor="@color/lanflix_text_main"
                             android:textSize="12sp"
                             app:cornerRadius="20dp"
                             app:icon="@drawable/ic_play_arrow"
                             app:iconSize="16dp"
-                            app:iconTint="@color/white"
+                            app:iconTint="@color/lanflix_text_main"
                             app:strokeColor="#1AFFFFFF"
                             app:strokeWidth="1dp" />
                     </LinearLayout>
@@ -402,55 +402,65 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Action Buttons Scroll -->
-            <HorizontalScrollView
+            <!-- Action Buttons Container -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginVertical="24dp"
-                android:scrollbars="none">
+                android:orientation="vertical">
 
+                <!-- Row 1: Primary Actions -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:gravity="center_horizontal"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_rescan"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Rescan Library"
-                        android:textColor="@color/black"
+                        android:text="Sync Library"
+                        android:textColor="@color/lanflix_bg"
                         android:textStyle="bold"
                         app:backgroundTint="@color/lanflix_primary"
                         app:cornerRadius="24dp"
                         app:icon="@drawable/ic_sync"
-                        app:iconTint="@color/black" />
+                        app:iconTint="@color/lanflix_bg" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_add_media"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="12dp"
-                        android:text="Add Media"
-                        android:textColor="@color/white"
+                        android:text="Select Folder"
+                        android:textColor="@color/lanflix_text_main"
                         app:backgroundTint="@color/lanflix_surface"
                         app:cornerRadius="24dp"
                         app:icon="@drawable/ic_add_circle"
-                        app:iconTint="#9CA3AF"
+                        app:iconTint="@color/lanflix_text_sub"
                         app:strokeColor="#1AFFFFFF"
                         app:strokeWidth="1dp" />
+                </LinearLayout>
+
+                <!-- Row 2: Secondary Actions -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_logs"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
                         android:text="Logs"
-                        android:textColor="@color/white"
+                        android:textColor="@color/lanflix_text_main"
                         app:backgroundTint="@color/lanflix_surface"
                         app:cornerRadius="24dp"
                         app:icon="@drawable/ic_history"
-                        app:iconTint="#9CA3AF"
+                        app:iconTint="@color/lanflix_text_sub"
                         app:strokeColor="#1AFFFFFF"
                         app:strokeWidth="1dp" />
 
@@ -460,16 +470,16 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="12dp"
                         android:text="Dashboard"
-                        android:textColor="@color/white"
+                        android:textColor="@color/lanflix_text_main"
                         android:enabled="false"
                         app:backgroundTint="@color/lanflix_surface"
                         app:cornerRadius="24dp"
                         app:icon="@drawable/ic_desktop_windows"
-                        app:iconTint="#9CA3AF"
+                        app:iconTint="@color/lanflix_text_sub"
                         app:strokeColor="#1AFFFFFF"
                         app:strokeWidth="1dp" />
                 </LinearLayout>
-            </HorizontalScrollView>
+            </LinearLayout>
             
             <!-- Log View (Hidden by default or toggled) -->
              <com.google.android.material.card.MaterialCardView

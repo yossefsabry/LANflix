@@ -5,162 +5,253 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/lanflix_bg"
-    android:padding="20dp"
     tools:context=".HomeActivity">
 
-    <!-- Header / Profile Section -->
+    <!-- Content Container -->
     <LinearLayout
-        android:id="@+id/header_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingBottom="24dp"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="20dp">
 
+        <!-- Header / Profile Section -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:id="@+id/header_container"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="24dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Welcome back,"
-                android:textColor="@color/lanflix_text_sub"
-                android:textSize="14sp"/>
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_username"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="User"
-                android:textColor="@color/lanflix_text_main"
-                android:textSize="20sp"
-                android:textStyle="bold"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Welcome back,"
+                    android:textColor="@color/lanflix_text_sub"
+                    android:textSize="14sp"/>
+
+                <TextView
+                    android:id="@+id/tv_username"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="User"
+                    android:textColor="@color/lanflix_text_main"
+                    android:textSize="20sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_profile"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                app:cardCornerRadius="24dp"
+                app:cardBackgroundColor="@color/lanflix_surface_light"
+                app:strokeWidth="0dp"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:srcCompat="@drawable/ic_profile"
+                    app:tint="@color/lanflix_text_main"
+                    android:padding="12dp"/>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/section_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CHOOSE MODE"
+            android:textColor="@color/lanflix_text_sub"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"/>
+
+        <!-- Host Server Card with Glassmorphism -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btn_profile"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:id="@+id/card_host"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@android:color/transparent"
             app:cardCornerRadius="24dp"
-            app:cardBackgroundColor="@color/lanflix_surface_light"
-            app:strokeWidth="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1AFFFFFF"
             android:clickable="true"
-            android:focusable="true">
+            android:focusable="true"
+            app:cardElevation="0dp">
+
+            <!-- Background Image Layer -->
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                app:srcCompat="@drawable/ic_profile"
-                app:tint="@color/lanflix_text_main"
-                android:padding="12dp"/>
+                android:src="@drawable/bg_home"
+                android:scaleType="centerCrop"
+                android:alpha="0.3"/>
+
+            <!-- Dark Overlay -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#CC000000"/>
+
+            <!-- Content -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:padding="24dp"
+                android:gravity="center_vertical">
+
+                <!-- Icon Container -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="@color/lanflix_primary"
+                    app:cardElevation="4dp">
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        app:srcCompat="@drawable/ic_dns"
+                        app:tint="@color/black"
+                        android:padding="14dp"/>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Text Content -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Host Server"
+                        android:textColor="@color/white"
+                        android:textSize="22sp"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Share your locally stored videos with other devices on your network."
+                        android:textColor="#B3FFFFFF"
+                        android:textSize="13sp"
+                        android:layout_marginTop="8dp"
+                        android:maxLines="3"/>
+                </LinearLayout>
+
+                <!-- Arrow Icon -->
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="#66FFFFFF"
+                    android:layout_marginStart="8dp"/>
+
+            </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Connect Client Card with Glassmorphism -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_client"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:cardCornerRadius="24dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1AFFFFFF"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardElevation="0dp">
+
+            <!-- Background Image Layer -->
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/bg_home"
+                android:scaleType="centerCrop"
+                android:alpha="0.3"/>
+
+            <!-- Dark Overlay -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#CC000000"/>
+
+            <!-- Content -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:padding="24dp"
+                android:gravity="center_vertical">
+
+                <!-- Icon Container -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="#33FFFFFF"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#1AFFFFFF">
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        app:srcCompat="@drawable/ic_cast"
+                        app:tint="@color/white"
+                        android:padding="14dp"/>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Text Content -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Connect as Client"
+                        android:textColor="@color/white"
+                        android:textSize="22sp"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Join an existing LANflix server to watch videos."
+                        android:textColor="#B3FFFFFF"
+                        android:textSize="13sp"
+                        android:layout_marginTop="8dp"
+                        android:maxLines="3"/>
+                </LinearLayout>
+
+                <!-- Arrow Icon -->
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="#66FFFFFF"
+                    android:layout_marginStart="8dp"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/section_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="CHOOSE MODE"
-        android:textColor="@color/lanflix_text_sub"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.1"
-        app:layout_constraintTop_toBottomOf="@id/header_container"
-        app:layout_constraintStart_toStartOf="parent"/>
-
-    <!-- Host Server Card -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_host"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:cardBackgroundColor="@color/lanflix_surface"
-        app:cardCornerRadius="20dp"
-        app:strokeWidth="0dp"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintTop_toBottomOf="@id/section_title">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
-
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                app:srcCompat="@drawable/ic_video"
-                app:tint="@color/lanflix_primary"
-                android:background="@drawable/card_background"
-                android:padding="10dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Host Server"
-                android:textColor="@color/lanflix_text_main"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginTop="16dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Share your locally stored videos with other devices on your network."
-                android:textColor="@color/lanflix_text_sub"
-                android:textSize="14sp"
-                android:layout_marginTop="8dp"/>
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Connect Client Card -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_client"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:cardBackgroundColor="@color/lanflix_surface"
-        app:cardCornerRadius="20dp"
-        app:strokeWidth="0dp"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintTop_toBottomOf="@id/card_host">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
-
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                app:srcCompat="@drawable/ic_video"
-                app:tint="@color/lanflix_text_main"
-                android:background="@drawable/card_background"
-                android:padding="10dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Connect as Client"
-                android:textColor="@color/lanflix_text_main"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginTop="16dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Join an existing LANflix server to watch videos."
-                android:textColor="@color/lanflix_text_sub"
-                android:textSize="14sp"
-                android:layout_marginTop="8dp"/>
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

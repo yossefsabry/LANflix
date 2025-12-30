@@ -117,7 +117,10 @@
             android:textSize="16sp"
             android:textStyle="bold"
             app:backgroundTint="@color/lanflix_primary"
-            app:cornerRadius="16dp"/>
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_arrow_forward"
+            app:iconGravity="end"
+            app:iconTint="@color/lanflix_bg"/>
 
         <com.google.android.material.button.MaterialButton
             android:layout_width="match_parent"
