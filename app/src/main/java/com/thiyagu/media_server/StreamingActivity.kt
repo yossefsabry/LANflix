@@ -95,21 +95,14 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
         
-        // 4. Network Speed (New)
+        // 4. Network Speed
         lifecycleScope.launch {
             viewModel.networkSpeed.collect { mbps ->
                 binding.tvStatSpeed.text = String.format("%.1f", mbps)
             }
         }
         
-        // 5. Active Connections (New)
-        lifecycleScope.launch {
-            viewModel.activeConnections.collect { count ->
-                binding.tvStatActive.text = count.toString()
-            }
-        }
-        
-        // 5. Active Connections (New)
+        // 5. Active Connections
         lifecycleScope.launch {
             viewModel.activeConnections.collect { count ->
                 binding.tvStatActive.text = count.toString()
@@ -225,10 +218,8 @@ class StreamingActivity : AppCompatActivity() {
             binding.btnOpenDashboard.isEnabled = false
             binding.btnOpenDashboard.alpha = 0.5f
             
-            // Mock Stats
-            binding.tvStatLoad.text = "4%" 
-            binding.tvStatSpeed.text = "120"
-            binding.tvStatActive.text = "0"
+            // Stats updated by ViewModel flows (Speed & Active)
+            binding.tvStatLoad.text = "4%"
             
         } else {
             binding.statusBadge.text = "OFFLINE"
@@ -244,10 +235,8 @@ class StreamingActivity : AppCompatActivity() {
             binding.btnOpenDashboard.isEnabled = false
             binding.btnOpenDashboard.alpha = 0.5f
             
-            // Reset Stats
+            // Reset Stats (Speed & Active are reset by ViewModel)
             binding.tvStatLoad.text = "0%"
-            binding.tvStatSpeed.text = "0"
-            binding.tvStatActive.text = "0"
         }
     }
 
