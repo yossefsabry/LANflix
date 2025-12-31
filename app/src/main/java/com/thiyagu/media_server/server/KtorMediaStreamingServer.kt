@@ -15,6 +15,7 @@ import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class KtorMediaStreamingServer(
@@ -24,6 +25,7 @@ class KtorMediaStreamingServer(
 ) {
     private var server: ApplicationEngine? = null
 
+
     fun start() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -32,7 +34,6 @@ class KtorMediaStreamingServer(
                     install(AutoHeadResponse)
                     
                     routing {
-                        // ... Routing Logic (Lines 34-202) ...
                         get("/") {
                             val dir = DocumentFile.fromTreeUri(appContext, treeUri)
                             if (dir == null || !dir.isDirectory) {
@@ -40,13 +41,25 @@ class KtorMediaStreamingServer(
                                 return@get
                             }
     
+                            // Read Preference
+                            val includeSubfolders = com.thiyagu.media_server.data.UserPreferences(appContext).subfolderScanningFlow.first()
                             val visibilityManager = com.thiyagu.media_server.utils.VideoVisibilityManager(appContext)
     
-                            val files = dir.listFiles().filter { 
+                            // Get all video files
+                            val allFilesRaw = if (includeSubfolders) {
+                                scanRecursively(dir)
+                            } else {
+                                dir.listFiles().toList()
+                            }
+                            
+                            val allFiles = allFilesRaw.filter { 
                                 !it.isDirectory && it.name != null && 
                                 (it.name!!.endsWith(".mp4", true) || it.name!!.endsWith(".mkv", true) || it.name!!.endsWith(".avi", true) || it.name!!.endsWith(".mov", true) || it.name!!.endsWith(".webm", true)) &&
-                                !visibilityManager.isVideoHidden(it.name!!)
+                                !visibilityManager.isVideoHidden(it.uri.toString())
                             }
+
+                            // Sort by last modified for "Recently Added"
+                            val recentFiles = allFiles.sortedByDescending { it.lastModified() }.take(5)
     
                             val html = StringBuilder()
                             html.append("""
@@ -54,11 +67,11 @@ class KtorMediaStreamingServer(
     <html lang="en" class="dark">
     <head>
         <meta charset="utf-8"/>
-        <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+        <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
         <meta content="#0a0a0a" name="theme-color"/>
-        <title>LANflix - Browse</title>
+        <title>LANflix</title>
         <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
         <script>
             tailwind.config = {
@@ -74,7 +87,7 @@ class KtorMediaStreamingServer(
                             "text-sub": "#9ca3af"
                         },
                         fontFamily: { 
-                            display: ['Spline Sans', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'] 
+                            display: ['Spline Sans', 'sans-serif'] 
                         }
                     }
                 }
@@ -82,84 +95,169 @@ class KtorMediaStreamingServer(
         </script>
         <style>
             body { 
-                font-family: 'Spline Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+                font-family: 'Spline Sans', sans-serif; 
                 -webkit-tap-highlight-color: transparent; 
                 -webkit-font-smoothing: antialiased;
-                -moz-osx-font-smoothing: grayscale;
             }
-            .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+            .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         </style>
     </head>
-    <body class="bg-background text-text-main min-h-screen pb-10 selection:bg-primary selection:text-black">
+    <body class="bg-background text-text-main min-h-screen pb-24 selection:bg-primary selection:text-black">
         
-        <!-- Header -->
-        <header class="sticky top-0 z-50 bg-background/90 backdrop-blur-md px-4 py-4 border-b border-white/5">
-            <div class="flex items-center justify-between max-w-4xl mx-auto">
-                <h1 class="text-2xl font-bold tracking-tight text-text-main flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary" style="font-size: 32px;">play_circle</span>
-                    LANflix
-                </h1>
-                <div class="w-10 h-10 rounded-full bg-surface-light border border-white/5 flex items-center justify-center">
-                     <span class="material-symbols-outlined text-text-sub">person</span>
+        <!-- Sticky Header -->
+        <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md px-4 py-3 border-b border-white/5">
+            <div class="flex items-center justify-between">
+                <!-- Exit Button (Left) -->
+                <a href="http://exit" class="w-10 h-10 rounded-full bg-surface-light border border-white/5 flex items-center justify-center active:scale-95 transition-transform">
+                     <span class="material-symbols-rounded text-text-sub">arrow_back</span>
+                </a>
+
+                <!-- Logo (Center) -->
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-rounded text-primary text-2xl">play_circle</span>
+                    <h1 class="text-xl font-bold tracking-tight">LANflix</h1>
                 </div>
+
+                <!-- Profile Button (Right) -->
+                <a href="http://profile" class="w-10 h-10 rounded-full bg-surface-light border border-white/5 flex items-center justify-center active:scale-95 transition-transform relative">
+                     <span class="material-symbols-rounded text-text-sub">person</span>
+                     <div class="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background"></div>
+                </a>
             </div>
         </header>
     
-        <main class="max-w-4xl mx-auto px-4 pt-6">
-            <div class="flex items-center justify-between mb-6">
-                 <h2 class="text-xl font-bold text-text-main">Library</h2>
-                 <span class="text-sm text-text-sub font-medium">${files.size} Videos</span>
+        <main class="px-4 py-4 space-y-6">
+            
+            <!-- Search Bar -->
+            <div class="relative">
+                <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-text-sub">search</span>
+                <input type="text" placeholder="Search local videos..." 
+                    class="w-full bg-surface-light border border-white/5 rounded-full py-3.5 pl-12 pr-12 text-sm placeholder:text-text-sub/50 focus:ring-1 focus:ring-primary focus:border-primary/50 transition-all outline-none text-text-main">
+                <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-white/5 text-text-sub">
+                    <span class="material-symbols-rounded text-[20px]">tune</span>
+                </button>
             </div>
-    
-            <!-- Video Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+            <!-- Recently Added -->
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                     <h2 class="text-lg font-bold">Recently Added</h2>
+                     <button class="text-xs font-bold text-primary">See All</button>
+                </div>
+                
+                <div class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">
                             """)
-    
-                            for (file in files) {
-                                val fileSizeMb = file.length() / (1024 * 1024)
+
+                            for (file in recentFiles) {
                                 val name = file.name ?: "Unknown"
+                                val fileSize = file.length() / (1024 * 1024)
                                 
                                 html.append("""
-                <a href="/${name}" class="group block">
-                    <div class="relative aspect-video rounded-xl overflow-hidden bg-surface-light border border-white/5 mb-3 group-hover:border-primary/50 transition-colors">
-                        <!-- Placeholder Thumbnail -->
-                        <div class="w-full h-full flex items-center justify-center bg-white/5">
-                            <span class="material-symbols-outlined text-4xl text-text-sub/30 group-hover:text-primary transition-colors duration-300">movie</span>
-                        </div>
-                        
+                    <a href="/${name}" class="flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5">
                         <!-- Play Overlay -->
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                                 <span class="material-symbols-outlined text-black">play_arrow</span>
+                        <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <span class="material-symbols-rounded text-white text-3xl">play_arrow</span>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div>
-                        <h3 class="font-medium text-[15px] leading-tight text-text-main line-clamp-2 group-hover:text-primary transition-colors">${name}</h3>
-                        <p class="text-xs text-text-sub mt-1 font-medium">${fileSizeMb} MB</p>
-                    </div>
-                </a>
+                        
+                        <div class="absolute inset-0 flex items-center justify-center bg-white/5">
+                            <span class="material-symbols-rounded text-4xl text-text-sub/20">movie</span>
+                        </div>
+                        
+                        <!-- Gradient Overlay -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                        
+                        <div class="absolute bottom-3 left-3 right-3">
+                            <h3 class="font-bold text-sm text-white line-clamp-1 mb-1">${name}</h3>
+                            <div class="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
+                                <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded">NEW</span>
+                                <span>${fileSize} MB</span>
+                            </div>
+                        </div>
+                    </a>
                                 """)
                             }
-    
-                            if (files.isEmpty()) {
+                            
+                            if (recentFiles.isEmpty()) {
+                                html.append("""<div class="w-full text-center py-8 text-text-sub text-sm">No recent videos</div>""")
+                            }
+
+                            html.append("""
+                </div>
+            </section>
+
+            <!-- All Videos -->
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                     <h2 class="text-lg font-bold">All Videos</h2>
+                     <span class="text-xs text-text-sub/60 font-medium">${allFiles.size} Videos</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                            """)
+
+                            for (file in allFiles) {
+                                val name = file.name ?: "Unknown"
+                                val fileSize = file.length() / (1024 * 1024)
+                                
                                 html.append("""
-                                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-text-sub opactiy-60">
-                                        <span class="material-symbols-outlined text-6xl mb-4 opacity-20">folder_off</span>
-                                        <p class="text-lg">No videos found</p>
-                                        <p class="text-sm mt-2 opacity-60">Add .mp4, .mkv, .avi files to the selected folder</p>
+                    <a href="/${name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
+                         <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
+                             <div class="absolute inset-0 flex items-center justify-center">
+                                 <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
+                             </div>
+                             
+                             <!-- Play Icon -->
+                             <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+                                 <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
+                             </div>
+                         </div>
+                         
+                         <div class="px-1 pb-1">
+                             <h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">${name}</h3>
+                             <p class="text-[11px] text-text-sub">${fileSize} MB • Local</p>
+                         </div>
+                    </a>
+                                """)
+                            }
+                            
+                            if (allFiles.isEmpty()) {
+                                html.append("""
+                                    <div class="col-span-full py-20 text-center">
+                                        <div class="w-16 h-16 bg-surface-light rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <span class="material-symbols-rounded text-3xl text-text-sub">videocam_off</span>
+                                        </div>
+                                        <p class="text-text-sub">No videos found in this folder.</p>
                                     </div>
                                 """)
                             }
-    
+
                             html.append("""
-            </div>
+                </div>
+            </section>
         </main>
         
-        <footer class="mt-12 text-center pb-8">
-            <p class="text-xs text-text-sub/40 font-bold tracking-widest uppercase">Powered by LANflix Server</p>
-        </footer>
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-white/5 px-6 py-2 pb-5 z-50">
+            <div class="flex items-center justify-between max-w-sm mx-auto">
+                <button class="flex flex-col items-center gap-1 text-primary">
+                    <span class="material-symbols-rounded text-2xl">grid_view</span>
+                    <span class="text-[10px] font-bold">Browse</span>
+                </button>
+                
+                <!-- Floating Action Button -->
+                <button class="w-14 h-14 -mt-8 bg-primary rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(250,198,56,0.3)] border-4 border-background text-black active:scale-90 transition-transform">
+                    <span class="material-symbols-rounded text-3xl">play_arrow</span>
+                </button>
+                
+                <button class="flex flex-col items-center gap-1 text-text-sub hover:text-text-main transition-colors">
+                    <span class="material-symbols-rounded text-2xl">settings</span>
+                    <span class="text-[10px] font-medium">Settings</span>
+                </button>
+            </div>
+        </nav>
     
     </body>
     </html>
@@ -172,7 +270,18 @@ class KtorMediaStreamingServer(
                             val filename = call.parameters["filename"]
                             if (filename != null) {
                                 val dir = DocumentFile.fromTreeUri(appContext, treeUri)
-                                val targetFile = dir?.listFiles()?.find { it.name == filename }
+                                if (dir == null) {
+                                    call.respond(HttpStatusCode.NotFound)
+                                    return@get
+                                }
+                                
+                                val includeSubfolders = com.thiyagu.media_server.data.UserPreferences(appContext).subfolderScanningFlow.first()
+                                
+                                val targetFile = if (includeSubfolders) {
+                                    findFileRecursively(dir, filename)
+                                } else {
+                                    dir.listFiles().find { it.name == filename }
+                                }
                                 
                                 if (targetFile != null) {
                                     val length = targetFile.length()
@@ -245,5 +354,46 @@ class KtorMediaStreamingServer(
                 activeConnections.decrementAndGet()
             }
         }
+    }
+    // Helper Methods
+    private fun scanRecursively(root: DocumentFile): List<DocumentFile> {
+        val result = mutableListOf<DocumentFile>()
+        val stack = java.util.ArrayDeque<DocumentFile>()
+        stack.push(root)
+
+        while (stack.isNotEmpty()) {
+            val current = stack.pop()
+            val children = current.listFiles()
+            
+            for (child in children) {
+                if (child.isDirectory) {
+                    stack.push(child)
+                } else {
+                    result.add(child)
+                }
+            }
+        }
+        return result
+    }
+    
+    private fun findFileRecursively(root: DocumentFile, targetName: String): DocumentFile? {
+        val stack = java.util.ArrayDeque<DocumentFile>()
+        stack.push(root)
+
+        while (stack.isNotEmpty()) {
+            val current = stack.pop()
+            val children = current.listFiles()
+            
+            for (child in children) {
+                if (child.isDirectory) {
+                    stack.push(child)
+                } else {
+                    if (child.name == targetName) {
+                        return child
+                    }
+                }
+            }
+        }
+        return null
     }
 }

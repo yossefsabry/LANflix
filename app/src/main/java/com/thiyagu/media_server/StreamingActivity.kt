@@ -109,6 +109,17 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
         
+        // Subfolder Scanning UI Link
+        lifecycleScope.launch {
+            viewModel.isSubfolderScanningEnabled.collect { enabled ->
+                binding.switchSubfolders.setOnCheckedChangeListener(null)
+                binding.switchSubfolders.isChecked = enabled
+                binding.switchSubfolders.setOnCheckedChangeListener { _, isChecked ->
+                    viewModel.toggleSubfolderScanning(isChecked)
+                }
+            }
+        }
+        
         // 6. Saved Folder Persistence
         lifecycleScope.launch {
             viewModel.savedFolderUri.collect { uriString ->
@@ -118,8 +129,25 @@ class StreamingActivity : AppCompatActivity() {
                         Uri.parse(uriString).path?.split(":")?.last() ?: "Select Folder"
                     } catch (e: Exception) { "Select Folder" }
                     
+                    // Update Button Text (Legacy)
                     binding.btnAddMedia.text = folderName
+                    
+                    // Update Path Display (New)
+                    try {
+                        val pathRaw = Uri.parse(uriString).path ?: ""
+                        val cleanPath = pathRaw
+                            .replace("/tree/primary:", "/Internal Storage/")
+                            .replace(":", "/")
+                        
+                        binding.tvSelectedFolderPath.text = cleanPath
+                        binding.tvSelectedFolderPath.visibility = View.VISIBLE
+                    } catch (e: Exception) {
+                        binding.tvSelectedFolderPath.visibility = View.GONE
+                    }
+
                     log("Loaded saved folder: $folderName")
+                } else {
+                    binding.tvSelectedFolderPath.visibility = View.GONE
                 }
             }
         }
@@ -144,6 +172,7 @@ class StreamingActivity : AppCompatActivity() {
              } else {
                  val intent = Intent(this, MediaManagementActivity::class.java)
                  intent.putExtra("FOLDER_URI", selectedFolderUri.toString())
+                 intent.putExtra("INCLUDE_SUBFOLDERS", viewModel.isSubfolderScanningEnabled.value)
                  startActivity(intent)
              }
         }

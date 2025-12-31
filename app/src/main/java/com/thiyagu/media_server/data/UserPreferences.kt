@@ -23,6 +23,7 @@ class UserPreferences(private val context: Context) {
         val USERNAME_KEY = stringPreferencesKey("username")
         val SELECTED_FOLDER_KEY = stringPreferencesKey("selected_folder_uri")
         val THEME_KEY = stringPreferencesKey("app_theme") // system, light, dark
+        val SUBFOLDER_SCANNING_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("subfolder_scanning")
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data
@@ -39,6 +40,11 @@ class UserPreferences(private val context: Context) {
         .map { preferences ->
             preferences[THEME_KEY] ?: "dark"
         }
+        
+    val subfolderScanningFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[SUBFOLDER_SCANNING_KEY] ?: false
+        }
 
     suspend fun saveSelectedFolder(uri: String) {
         context.dataStore.edit { preferences ->
@@ -49,6 +55,12 @@ class UserPreferences(private val context: Context) {
     suspend fun saveTheme(theme: String) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = theme
+        }
+    }
+    
+    suspend fun saveSubfolderScanning(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SUBFOLDER_SCANNING_KEY] = enabled
         }
     }
     

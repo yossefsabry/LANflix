@@ -26,6 +26,16 @@ class VideoVisibilityManager(context: Context) {
         prefs.edit().putStringSet(KEY_HIDDEN_VIDEOS, hiddenVideos).apply()
     }
 
+    fun setVideosHidden(paths: Collection<String>, hidden: Boolean) {
+        val hiddenVideos = getHiddenVideos().toMutableSet()
+        if (hidden) {
+            hiddenVideos.addAll(paths)
+        } else {
+            hiddenVideos.removeAll(paths.toSet())
+        }
+        prefs.edit().putStringSet(KEY_HIDDEN_VIDEOS, hiddenVideos).apply()
+    }
+
     private fun getHiddenVideos(): Set<String> {
         return prefs.getStringSet(KEY_HIDDEN_VIDEOS, emptySet()) ?: emptySet()
     }

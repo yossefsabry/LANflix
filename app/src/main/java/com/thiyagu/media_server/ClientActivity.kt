@@ -54,14 +54,40 @@ class ClientActivity : AppCompatActivity() {
         
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url?.toString() ?: return false
+                
+                if (url.endsWith("/exit") || url == "http://exit/") {
+                    // Handle Exit: Stops loading, hides webview, shows connection screen
+                    webView.stopLoading()
+                    webView.clearHistory()
+                    webView.visibility = View.GONE
+                    connectionContainer.visibility = View.VISIBLE
+                    webView.loadUrl("about:blank")
+                    return true
+                }
+                
+                if (url.endsWith("/profile") || url == "http://profile/") {
+                    // Handle Profile: Navigate to ProfileActivity
+                    try {
+                        val intent = android.content.Intent(this@ClientActivity, ProfileActivity::class.java)
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ClientActivity, "Could not open profile", Toast.LENGTH_SHORT).show()
+                    }
+                    return true
+                }
+                
                 return false // Keep navigation inside WebView
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                loadingIndicator.visibility = View.GONE
-                webView.visibility = View.VISIBLE
-                connectionContainer.visibility = View.GONE
+                // Prevent white screen flash by ignoring about:blank
+                if (url != "about:blank") {
+                    loadingIndicator.visibility = View.GONE
+                    webView.visibility = View.VISIBLE
+                    connectionContainer.visibility = View.GONE
+                }
             }
             
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {

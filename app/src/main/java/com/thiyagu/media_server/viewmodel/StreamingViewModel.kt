@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.currentCoroutineContext
@@ -29,6 +30,10 @@ class StreamingViewModel(
     // Saved Folder
     val savedFolderUri: StateFlow<String?> = userPreferences.selectedFolderFlow
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    // Subfolder Scanning Preference
+    val isSubfolderScanningEnabled: StateFlow<Boolean> = userPreferences.subfolderScanningFlow
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     // Server State
     val serverState: StateFlow<ServerState> = serverManager.state
@@ -69,10 +74,21 @@ class StreamingViewModel(
         serverManager.stopServer()
     }
     
+    fun toggleSubfolderScanning(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferences.saveSubfolderScanning(enabled)
+            // Trigger rescan if we have a folder selected
+            savedFolderUri.value?.let { uriString ->
+                 rescanLibrary(Uri.parse(uriString))
+            }
+        }
+    }
+    
     fun rescanLibrary(folderUri: Uri) {
         viewModelScope.launch {
             userPreferences.saveSelectedFolder(folderUri.toString())
-            mediaRepository.scanAndSync(folderUri)
+            val includeSubfolders = userPreferences.subfolderScanningFlow.first()
+            mediaRepository.scanAndSync(folderUri, includeSubfolders)
         }
     }
 

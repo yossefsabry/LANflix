@@ -17,17 +17,23 @@ class MediaRepository(
 
     val allMedia: Flow<List<MediaFile>> = mediaDao.getAllMedia()
 
-    suspend fun scanAndSync(folderUri: Uri) {
+    suspend fun scanAndSync(folderUri: Uri, includeSubfolders: Boolean = false) {
         withContext(Dispatchers.IO) {
             val tree = DocumentFile.fromTreeUri(context, folderUri) ?: return@withContext
-            val files = tree.listFiles()
+            
+            // Collect all files recursively or flat
+            val allFiles = if (includeSubfolders) {
+                scanRecursively(tree)
+            } else {
+                tree.listFiles().toList()
+            }
             
             // 1. Get current DB state
             val currentDbFiles = mediaDao.getAllMedia().first()
             val dbPaths = currentDbFiles.map { it.path }.toSet()
             
             // 2. Process scanned files
-            val scannedFiles = files.filter { 
+            val scannedFiles = allFiles.filter { 
                 !it.isDirectory && isValidVideoFile(it.name) 
             }.map { file ->
                 MediaFile(
@@ -56,6 +62,27 @@ class MediaRepository(
                 mediaDao.deleteAll(toDelete)
             }
         }
+    }
+    
+    // Helper for recursive scanning (Stack-based iteration)
+    private fun scanRecursively(root: DocumentFile): List<DocumentFile> {
+        val result = mutableListOf<DocumentFile>()
+        val stack = java.util.ArrayDeque<DocumentFile>()
+        stack.push(root)
+
+        while (stack.isNotEmpty()) {
+            val current = stack.pop()
+            val children = current.listFiles()
+            
+            for (child in children) {
+                if (child.isDirectory) {
+                    stack.push(child)
+                } else {
+                    result.add(child)
+                }
+            }
+        }
+        return result
     }
     
     suspend fun clearLibrary() {
