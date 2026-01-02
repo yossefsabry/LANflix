@@ -1,8 +1,19 @@
-![LANflix Logo](app/src/main/res/drawable/ic_lanflix_logo.png)
+<div align="center">
+  <img src="app/src/main/res/drawable/ic_lanflix_logo.png" width="80" height="80" alt="LANflix Logo"/>
+  <h1>LANflix</h1>
+  <p>
+    <strong>A local media streaming solution comprised of two main components: a Server for hosting and streaming media, and a Client for consuming content across the local network.</strong>
+  </p>
 
-# LANflix
+  <p>
+    <img src="https://img.shields.io/badge/Language-Kotlin-7f52ff?style=flat-square" alt="Kotlin" />
+    <img src="https://img.shields.io/badge/Platform-Android-3ddc84?style=flat-square" alt="Android" />
+    <img src="https://img.shields.io/badge/License-MIT-fabf4a?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/badge/Status-Active-success?style=flat-square" alt="Status" />
+  </p>
+</div>
 
-LANflix is a local media streaming solution comprised of two main components: a Server for hosting and streaming media, and a Client for consuming content across the local network.
+---
 
 ## Features
 
