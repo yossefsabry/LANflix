@@ -13,23 +13,24 @@ import com.thiyagu.media_server.data.UserPreferences
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
+import android.graphics.Color
+import androidx.core.view.WindowCompat
+import android.view.View
+import android.view.WindowManager
+
 class WelcomeActivity : AppCompatActivity() {
 
     private val userPreferences: UserPreferences by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Make full screen (Edge-to-Edge)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        
         setContentView(R.layout.activity_welcome)
-
-        // Apply Native Blur on API 31+
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val brandingContainer = findViewById<android.widget.LinearLayout>(R.id.branding_container)
-            brandingContainer.setRenderEffect(
-                android.graphics.RenderEffect.createBlurEffect(
-                    30f, 30f, android.graphics.Shader.TileMode.MIRROR
-                )
-            )
-        }
 
         val etUsername = findViewById<TextInputEditText>(R.id.et_username)
         val btnGetStarted = findViewById<MaterialButton>(R.id.btn_get_started)

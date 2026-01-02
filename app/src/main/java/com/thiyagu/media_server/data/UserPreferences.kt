@@ -19,11 +19,19 @@ class UserPreferences(private val context: Context) {
         }
     }
     
+    suspend fun saveSubfolderScanning(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SUBFOLDER_SCANNING_KEY] = enabled
+        }
+    }
+    
+    // History Retention
     companion object {
         val USERNAME_KEY = stringPreferencesKey("username")
         val SELECTED_FOLDER_KEY = stringPreferencesKey("selected_folder_uri")
-        val THEME_KEY = stringPreferencesKey("app_theme") // system, light, dark
+        val THEME_KEY = stringPreferencesKey("app_theme") 
         val SUBFOLDER_SCANNING_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("subfolder_scanning")
+        val HISTORY_RETENTION_KEY = androidx.datastore.preferences.core.intPreferencesKey("history_retention_days")
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data
@@ -46,6 +54,11 @@ class UserPreferences(private val context: Context) {
             preferences[SUBFOLDER_SCANNING_KEY] ?: false
         }
 
+    val historyRetentionFlow: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[HISTORY_RETENTION_KEY] ?: 10 // Default 10 days
+        }
+
     suspend fun saveSelectedFolder(uri: String) {
         context.dataStore.edit { preferences ->
             preferences[SELECTED_FOLDER_KEY] = uri
@@ -57,10 +70,10 @@ class UserPreferences(private val context: Context) {
             preferences[THEME_KEY] = theme
         }
     }
-    
-    suspend fun saveSubfolderScanning(enabled: Boolean) {
+
+    suspend fun saveHistoryRetention(days: Int) {
         context.dataStore.edit { preferences ->
-            preferences[SUBFOLDER_SCANNING_KEY] = enabled
+            preferences[HISTORY_RETENTION_KEY] = days
         }
     }
     

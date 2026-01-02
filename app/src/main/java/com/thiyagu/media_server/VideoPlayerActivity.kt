@@ -11,6 +11,10 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
 class VideoPlayerActivity : AppCompatActivity() {
 
@@ -18,6 +22,14 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var loadingIndicator: ProgressBar
     private var player: ExoPlayer? = null
     private var videoUrl: String? = null
+    
+    // Dependencies
+    // Dependencies
+    private val historyRepository: com.thiyagu.media_server.data.VideoHistoryRepository by inject()
+    private val userPreferences: com.thiyagu.media_server.data.UserPreferences by inject()
+    
+    private var historyRetentionDays = 10 // Default
+    private var isResumedFromHistory = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +47,16 @@ class VideoPlayerActivity : AppCompatActivity() {
         
         // Hide system UI for immersive mode
         hideSystemUi()
+        
+        // Initialize history settings
+        lifecycleScope.launch {
+            userPreferences.historyRetentionFlow.collect { days ->
+                historyRetentionDays = days
+                if (days != -1) {
+                    historyRepository.pruneHistory(days)
+                }
+            }
+        }
     }
 
     override fun onStart() {
@@ -82,13 +104,39 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
         player?.setMediaItem(mediaItem)
+        
+        // Resume Logic
+        if (!isResumedFromHistory && historyRetentionDays != -1) {
+            lifecycleScope.launch {
+                val savedPosition = historyRepository.getPosition(videoUrl!!)
+                if (savedPosition != null && savedPosition > 0) {
+                    player?.seekTo(savedPosition)
+                    android.widget.Toast.makeText(this@VideoPlayerActivity, "Resuming playback...", android.widget.Toast.LENGTH_SHORT).show()
+                    isResumedFromHistory = true
+                }
+            }
+        }
+        
         player?.prepare()
         player?.playWhenReady = true
     }
 
     private fun releasePlayer() {
-        player?.let {
-            it.release()
+        player?.let { exoPlayer ->
+            // Save position before releasing
+            if (historyRetentionDays != -1 && videoUrl != null) {
+                val position = exoPlayer.currentPosition
+                val duration = exoPlayer.duration
+                // Only save if not near the end (e.g., > 95% complete) or < 5s
+                if (duration > 0 && position < (duration * 0.95)) {
+                    lifecycleScope.launch {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                            historyRepository.savePosition(videoUrl!!, position)
+                        }
+                    }
+                }
+            }
+            exoPlayer.release()
         }
         player = null
     }

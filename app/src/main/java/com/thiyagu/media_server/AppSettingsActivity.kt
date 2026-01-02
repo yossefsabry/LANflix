@@ -12,6 +12,8 @@ import com.thiyagu.media_server.data.UserPreferences
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
+import androidx.core.app.NotificationManagerCompat
+
 class AppSettingsActivity : AppCompatActivity() {
 
     private val userPreferences: UserPreferences by inject()
@@ -25,15 +27,22 @@ class AppSettingsActivity : AppCompatActivity() {
 
         // Setup Options
         setupOption(R.id.opt_video_quality, R.drawable.ic_video, "Video Quality", "Auto (Recommended)")
-        setupOption(R.id.opt_notifications, R.drawable.ic_settings, "Notifications", "Enabled")
+        setupOption(R.id.opt_notifications, R.drawable.ic_settings, "Notifications", getNotificationStatus()) {
+            openAppNotificationSettings()
+        }
         setupOption(R.id.opt_autoplay, R.drawable.ic_video, "Auto-play Next", "On")
         
         // Theme Option with Logic
         setupOption(R.id.opt_theme, R.drawable.ic_settings, "Theme", "System Default") {
             showThemeSelectionDialog()
         }
+
+        // History Retention Option
+        setupOption(R.id.opt_history_retention, R.drawable.ic_settings, "Resume History", "10 Days") {
+            showHistoryRetentionDialog()
+        }
         
-        // Observe Theme changes to update Subtitle
+        // Observe Theme changes
         lifecycleScope.launch {
             userPreferences.themeFlow.collect { theme ->
                 val title = when(theme) {
@@ -43,6 +52,32 @@ class AppSettingsActivity : AppCompatActivity() {
                 }
                 updateOptionSubtitle(R.id.opt_theme, title)
             }
+        }
+
+        // Observe History Retention changes
+        lifecycleScope.launch {
+            userPreferences.historyRetentionFlow.collect { days ->
+                val subtitle = when(days) {
+                    -1 -> "Never"
+                    else -> "$days Days"
+                }
+                updateOptionSubtitle(R.id.opt_history_retention, subtitle)
+            }
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Dynamically update notification status
+        updateOptionSubtitle(R.id.opt_notifications, getNotificationStatus())
+        // Start discovery if needed, but not relevant here
+    }
+    
+    private fun getNotificationStatus(): String {
+        return if (NotificationManagerCompat.from(this).areNotificationsEnabled()) {
+            "Enabled"
+        } else {
+            "Disabled"
         }
     }
     
@@ -60,7 +95,40 @@ class AppSettingsActivity : AppCompatActivity() {
             }
             .show()
     }
+
+    private fun showHistoryRetentionDialog() {
+        val options = arrayOf("5 Days", "10 Days", "20 Days", "30 Days", "Never")
+        val values = arrayOf(5, 10, 20, 30, -1)
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Keep Resume History For")
+            .setItems(options) { _, which ->
+                val selectedDays = values[which]
+                lifecycleScope.launch {
+                    userPreferences.saveHistoryRetention(selectedDays)
+                    // Optional: Prune immediately if user reduced retention? 
+                    // For now, let the next VideoPlayer launch handle pruning.
+                }
+            }
+            .show()
+    }
     
+    private fun openAppNotificationSettings() {
+        try {
+            val intent = android.content.Intent()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                intent.action = android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+            } else {
+                intent.action = android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                intent.data = android.net.Uri.fromParts("package", packageName, null)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Unable to open notification settings", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun updateOptionSubtitle(viewId: Int, subtitle: String) {
         val view = findViewById<View>(viewId) ?: return
         val subtitleView = view.findViewById<TextView>(R.id.subtitle)

@@ -16,134 +16,147 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Branding Section with Glass Effect -->
-    <LinearLayout
-        android:id="@+id/branding_container"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:padding="24dp"
-        android:background="@drawable/bg_glass"
-        app:layout_constraintWidth_percent="0.85"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/input_container"
-        app:layout_constraintVertical_bias="0.45">
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            app:cardCornerRadius="32dp"
-            app:cardBackgroundColor="@color/lanflix_surface_light"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/lanflix_primary"
-            android:layout_marginBottom="24dp">
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:src="@drawable/ic_lanflix_logo"
-                android:padding="20dp"/>
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LANflix"
-            android:textColor="@color/lanflix_text_main"
-            android:textSize="40sp"
-            android:textStyle="bold"
-            android:letterSpacing="-0.02"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LOCAL STREAMING. SIMPLIFIED."
-            android:textColor="@color/lanflix_primary"
-            android:textSize="12sp"
-            android:letterSpacing="0.15"
-            android:textStyle="bold"
-            android:layout_marginTop="8dp"/>
-            
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Stream your library in high quality, anywhere on your local network."
-            android:textColor="@color/lanflix_text_sub"
-            android:textSize="14sp"
-            android:textAlignment="center"
-            android:layout_marginTop="16dp"
-            android:layout_marginHorizontal="24dp"/>
-    </LinearLayout>
-
-    <!-- Input Section -->
-    <LinearLayout
-        android:id="@+id/input_container"
+    <!-- Scroll Content -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="24dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="PICK A USERNAME"
-            android:textColor="@color/lanflix_text_sub"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.1"/>
-
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:boxBackgroundMode="none"
-            app:hintEnabled="false">
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="24dp">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_username"
+            <!-- Spacer for top status bar area -->
+            <Space
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:background="@drawable/bg_input_field"
-                android:hint="e.g. MovieBuff"
-                android:textColor="@color/lanflix_text_main"
-                android:textColorHint="@color/lanflix_text_sub"
-                android:textSize="20sp"
-                android:inputType="textPersonName"
-                android:paddingHorizontal="20dp"
-                android:paddingVertical="0dp"
+                android:layout_height="48dp" />
+
+            <!-- Branding Section -->
+            <LinearLayout
+                android:id="@+id/branding_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:gravity="center"
-                android:singleLine="true"/>
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="48dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_get_started"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="16dp"
-            android:text="Get Started"
-            android:textColor="@color/lanflix_bg"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/lanflix_primary"
-            app:cornerRadius="16dp"
-            app:icon="@drawable/ic_arrow_forward"
-            app:iconGravity="end"
-            app:iconTint="@color/lanflix_bg"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    app:cardCornerRadius="32dp"
+                    app:cardBackgroundColor="@color/lanflix_surface_light"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/lanflix_primary"
+                    android:layout_marginBottom="24dp">
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_lanflix_logo"
+                        android:padding="20dp"/>
+                </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Scan Server QR Code"
-            android:textColor="@color/lanflix_text_sub"
-            app:backgroundTint="@android:color/transparent"
-            app:rippleColor="@color/lanflix_surface_light"
-            style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LANflix"
+                    android:textColor="@color/lanflix_text_main"
+                    android:textSize="40sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="-0.02"/>
 
-    </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LOCAL STREAMING. SIMPLIFIED."
+                    android:textColor="@color/lanflix_primary"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.15"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Stream your library in high quality, anywhere on your local network."
+                    android:textColor="@color/lanflix_text_sub"
+                    android:textSize="14sp"
+                    android:textAlignment="center"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginHorizontal="24dp"/>
+            </LinearLayout>
+
+            <!-- Input Section -->
+            <LinearLayout
+                android:id="@+id/input_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PICK A USERNAME"
+                    android:textColor="@color/lanflix_text_sub"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:boxBackgroundMode="none"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_username"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_input_field"
+                        android:hint="e.g. MovieBuff"
+                        android:textColor="@color/lanflix_text_main"
+                        android:textColorHint="@color/lanflix_text_sub"
+                        android:textSize="20sp"
+                        android:inputType="textPersonName"
+                        android:paddingHorizontal="20dp"
+                        android:paddingVertical="0dp"
+                        android:gravity="center"
+                        android:singleLine="true"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_get_started"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="16dp"
+                    android:text="Get Started"
+                    android:textColor="@color/lanflix_bg"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/lanflix_primary"
+                    app:cornerRadius="16dp"
+                    app:icon="@drawable/ic_arrow_forward"
+                    app:iconGravity="end"
+                    app:iconTint="@color/lanflix_bg"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Scan Server QR Code"
+                    android:textColor="@color/lanflix_text_sub"
+                    app:backgroundTint="@android:color/transparent"
+                    app:rippleColor="@color/lanflix_surface_light"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"/>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

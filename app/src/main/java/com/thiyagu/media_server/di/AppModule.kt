@@ -22,11 +22,14 @@ val appModule = module {
             androidContext(),
             MediaDatabase::class.java,
             "lanflix_db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration() // Simple migration strategy
+        .build()
     }
 
     // DAO
     single { get<MediaDatabase>().mediaDao() }
+    single { get<MediaDatabase>().videoHistoryDao() }
 
     // UserPreferences
     single { UserPreferences(androidContext()) }
@@ -38,6 +41,7 @@ val appModule = module {
     // Repositories
     single { MediaRepository(androidContext(), get()) }
     single { UserRepository(get()) }
+    single { com.thiyagu.media_server.data.VideoHistoryRepository(get()) }
 
     // ViewModels
     viewModel { HomeViewModel(get()) }

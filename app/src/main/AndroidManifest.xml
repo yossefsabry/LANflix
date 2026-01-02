@@ -30,7 +30,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".WelcomeActivity" android:exported="false" />
+        <activity android:name=".WelcomeActivity" android:exported="false" android:theme="@style/WelcomeTheme" />
         <activity android:name=".HomeActivity" android:exported="false" />
         <activity
             android:name=".ClientActivity"

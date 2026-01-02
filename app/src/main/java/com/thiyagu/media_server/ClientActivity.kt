@@ -21,12 +21,14 @@ class ClientActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var connectionContainer: LinearLayout
-    private lateinit var loadingIndicator: ProgressBar
+    private lateinit var loadingOverlay: android.widget.FrameLayout
     private lateinit var etIpAddress: TextInputEditText
-    private lateinit var rvServers: androidx.recyclerview.widget.RecyclerView
     private lateinit var rvServers: androidx.recyclerview.widget.RecyclerView
     private val discoveryManager: com.thiyagu.media_server.server.ServerDiscoveryManager by inject()
     private lateinit var serverAdapter: com.thiyagu.media_server.server.ServerAdapter
+    
+    // Security: Track connected host strictness
+    private var currentHost: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +38,7 @@ class ClientActivity : AppCompatActivity() {
         val btnConnect = findViewById<MaterialButton>(R.id.btn_connect)
         webView = findViewById(R.id.webview)
         connectionContainer = findViewById(R.id.connection_container)
-        loadingIndicator = findViewById(R.id.loading_indicator)
+        loadingOverlay = findViewById(R.id.loading_overlay)
         rvServers = findViewById(R.id.rv_servers)
         
         val btnBack = findViewById<android.view.View>(R.id.btn_back_home)
@@ -82,6 +84,15 @@ class ClientActivity : AppCompatActivity() {
         }
         
         webView.webViewClient = object : WebViewClient() {
+            
+            // Show blocking loader when page starts loading
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                if (url != "about:blank") {
+                    loadingOverlay.visibility = View.VISIBLE
+                }
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
                 
@@ -92,11 +103,12 @@ class ClientActivity : AppCompatActivity() {
                     webView.visibility = View.GONE
                     connectionContainer.visibility = View.VISIBLE
                     webView.loadUrl("about:blank")
+                    // Ensure overlay is hidden
+                     loadingOverlay.visibility = View.GONE
                     return true
                 }
                 
-
-
+                // Allow internal app navigation BEFORE security check
                 if (url.endsWith(".mp4", true) || url.endsWith(".mkv", true) || url.endsWith(".avi", true) || url.endsWith(".mov", true) || url.endsWith(".webm", true)) {
                     // Handle Video: Launch Native Player
                     val intent = android.content.Intent(this@ClientActivity, VideoPlayerActivity::class.java)
@@ -104,7 +116,6 @@ class ClientActivity : AppCompatActivity() {
                     startActivity(intent)
                     return true
                 }
-                
                 
                 if (url.endsWith("/profile") || url == "http://profile/") {
                     // Handle Profile: Navigate to ProfileActivity
@@ -128,15 +139,29 @@ class ClientActivity : AppCompatActivity() {
                     }
                     return true
                 }
-                
+
+                // Security Check: Strict Host Enforcement
+                val requestHost = android.net.Uri.parse(url).host
+                if (currentHost != null && requestHost != null && requestHost != currentHost) {
+                    // Unauthorized Redirect Detected! Disconnect immediately.
+                    webView.stopLoading()
+                    webView.clearHistory()
+                    webView.visibility = View.GONE
+                    connectionContainer.visibility = View.VISIBLE
+                    webView.loadUrl("about:blank")
+                    loadingOverlay.visibility = View.GONE
+                    Toast.makeText(this@ClientActivity, "Disconnected: External redirect blocked", Toast.LENGTH_LONG).show()
+                    return true
+                }
+
                 return false // Keep navigation inside WebView
             }
 
             // Optimization: Show WebView as soon as content is visible (API 23+)
             override fun onPageCommitVisible(view: WebView?, url: String?) {
                 super.onPageCommitVisible(view, url)
+                loadingOverlay.visibility = View.GONE // Always hide loader
                 if (url != "about:blank") {
-                    loadingIndicator.visibility = View.GONE
                     webView.visibility = View.VISIBLE
                     connectionContainer.visibility = View.GONE
                 }
@@ -144,16 +169,16 @@ class ClientActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                loadingOverlay.visibility = View.GONE // Always hide loader
                 // Prevent white screen flash by ignoring about:blank
                 if (url != "about:blank") {
-                    loadingIndicator.visibility = View.GONE
                     webView.visibility = View.VISIBLE
                     connectionContainer.visibility = View.GONE
                 }
             }
             
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
-                loadingIndicator.visibility = View.GONE
+                loadingOverlay.visibility = View.GONE
                 connectionContainer.visibility = View.VISIBLE
                 
                 // Show helpful error message
@@ -167,7 +192,6 @@ class ClientActivity : AppCompatActivity() {
                     else -> this@ClientActivity.getString(R.string.error_connection_general, description ?: "Unknown error")
                 }
                 
-                androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
                 androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
                     .setTitle(this@ClientActivity.getString(R.string.dialog_connection_failed_title))
                     .setMessage(errorMsg)
@@ -186,6 +210,7 @@ class ClientActivity : AppCompatActivity() {
                 val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 imm.hideSoftInputFromWindow(etIpAddress.windowToken, 0)
 
+                currentHost = ipAddress // Set strict host
                 val theme = if (isDarkMode()) "dark" else "light"
                 val url = "http://$ipAddress:8888?theme=$theme"
                 loadUrl(url)
@@ -228,6 +253,7 @@ class ClientActivity : AppCompatActivity() {
             } else {
                 // Direct Connect
                 etIpAddress.setText(server.ip)
+                currentHost = server.ip // Set strict host
                 val theme = if (isDarkMode()) "dark" else "light"
                 loadUrl("http://${server.ip}:${server.port}?theme=$theme")
             }
@@ -263,6 +289,7 @@ class ClientActivity : AppCompatActivity() {
                  // For now, we assume success if password is "admin"
                  if (password == "admin") {
                      etIpAddress.setText(server.ip)
+                     currentHost = server.ip // Set strict host
                      val theme = if (isDarkMode()) "dark" else "light"
                      loadUrl("http://${server.ip}:${server.port}?theme=$theme")
                  } else {
@@ -276,6 +303,10 @@ class ClientActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         discoveryManager.startDiscovery()
+        // Ensure overlay is hidden if we are in connection mode
+        if (webView.visibility != View.VISIBLE) {
+            loadingOverlay.visibility = View.GONE
+        }
     }
 
     override fun onPause() {
@@ -284,7 +315,7 @@ class ClientActivity : AppCompatActivity() {
     }
 
     private fun loadUrl(url: String) {
-        loadingIndicator.visibility = View.VISIBLE
+        loadingOverlay.visibility = View.VISIBLE
         connectionContainer.visibility = View.GONE
         webView.loadUrl(url)
     }

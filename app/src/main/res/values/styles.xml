@@ -12,6 +12,11 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <style name="WelcomeTheme" parent="AppTheme">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
     <style name="CircleImage">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
