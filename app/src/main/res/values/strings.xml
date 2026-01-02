@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">LANflix</string>
+
+    <!-- Client Activity Errors -->
+    <string name="error_host_lookup">Cannot find server. Check IP address and network connection.</string>
+    <string name="error_connect">Cannot connect to server. Make sure it\'s running.</string>
+    <string name="error_timeout">Connection timed out. Server may be slow or offline.</string>
+    <string name="error_connection_general">Connection error: %s</string>
+    <string name="dialog_connection_failed_title">Connection Failed</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_connect">Connect</string>
+    
+    <!-- Password Dialog -->
+    <string name="dialog_password_title">Password Required</string>
+    <string name="dialog_password_message">Enter password for %s</string>
+    <string name="hint_password">Password</string>
+    <string name="error_incorrect_password">Incorrect Password</string>
+    
+    <!-- Navigation Errors -->
+    <string name="error_open_profile">Could not open profile</string>
+    <string name="error_open_settings">Could not open settings</string>
 </resources>

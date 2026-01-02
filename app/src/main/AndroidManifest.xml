@@ -45,6 +45,12 @@
         <activity android:name=".AppSettingsActivity" android:exported="false" />
         <activity android:name=".PrivacySecurityActivity" android:exported="false" />
         <activity android:name=".NetworkInfoActivity" android:exported="false" />
+        <activity
+             android:name=".VideoPlayerActivity"
+             android:exported="false"
+             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+             android:screenOrientation="landscape"
+             android:theme="@style/Theme.AppCompat.NoActionBar"/>
 
         <service
             android:name=".service.MediaServerService"

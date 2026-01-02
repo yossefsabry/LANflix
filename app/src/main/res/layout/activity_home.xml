@@ -14,6 +14,8 @@
         android:orientation="vertical"
         android:padding="20dp">
 
+
+
         <!-- Header / Profile Section -->
         <LinearLayout
             android:id="@+id/header_container"
@@ -22,6 +24,13 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingBottom="24dp">
+
+            <!-- Logo -->
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_lanflix_logo"
+                android:layout_marginEnd="16dp"/>
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -82,8 +91,8 @@
             android:layout_marginTop="16dp"
             app:cardBackgroundColor="@android:color/transparent"
             app:cardCornerRadius="24dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#1AFFFFFF"
+            app:strokeWidth="0dp"
+            app:strokeColor="@color/card_stroke_color"
             android:clickable="true"
             android:focusable="true"
             app:cardElevation="0dp">
@@ -94,13 +103,13 @@
                 android:layout_height="match_parent"
                 android:src="@drawable/bg_home"
                 android:scaleType="centerCrop"
-                android:alpha="0.3"/>
+                android:alpha="0.2"/>
 
             <!-- Dark Overlay -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#CC000000"/>
+                android:background="@color/home_card_overlay"/>
 
             <!-- Content -->
             <LinearLayout
@@ -137,7 +146,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Host Server"
-                        android:textColor="@color/white"
+                        android:textColor="@color/home_card_text_primary"
                         android:textSize="22sp"
                         android:textStyle="bold"/>
 
@@ -145,7 +154,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Share your locally stored videos with other devices on your network."
-                        android:textColor="#B3FFFFFF"
+                        android:textColor="@color/home_card_text_secondary"
                         android:textSize="13sp"
                         android:layout_marginTop="8dp"
                         android:maxLines="3"/>
@@ -170,8 +179,8 @@
             android:layout_marginTop="16dp"
             app:cardBackgroundColor="@android:color/transparent"
             app:cardCornerRadius="24dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#1AFFFFFF"
+            app:strokeWidth="0dp"
+            app:strokeColor="@color/card_stroke_color"
             android:clickable="true"
             android:focusable="true"
             app:cardElevation="0dp">
@@ -182,13 +191,13 @@
                 android:layout_height="match_parent"
                 android:src="@drawable/bg_home"
                 android:scaleType="centerCrop"
-                android:alpha="0.3"/>
+                android:alpha="0.2"/>
 
             <!-- Dark Overlay -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#CC000000"/>
+                android:background="@color/home_card_overlay"/>
 
             <!-- Content -->
             <LinearLayout
@@ -203,10 +212,10 @@
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     app:cardCornerRadius="20dp"
-                    app:cardBackgroundColor="#33FFFFFF"
+                    app:cardBackgroundColor="@color/home_card_icon_bg"
                     app:cardElevation="0dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#1AFFFFFF">
+                    app:strokeWidth="0dp"
+                    app:strokeColor="@color/card_stroke_color">
                     <ImageView
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -227,7 +236,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Connect as Client"
-                        android:textColor="@color/white"
+                        android:textColor="@color/home_card_text_primary"
                         android:textSize="22sp"
                         android:textStyle="bold"/>
 
@@ -235,7 +244,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Join an existing LANflix server to watch videos."
-                        android:textColor="#B3FFFFFF"
+                        android:textColor="@color/home_card_text_secondary"
                         android:textSize="13sp"
                         android:layout_marginTop="8dp"
                         android:maxLines="3"/>

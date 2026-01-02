@@ -3,22 +3,34 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/lanflix_bg"
-    android:padding="24dp">
+    android:layout_height="match_parent">
 
-    <!-- Branding Section -->
+    <!-- Background Image -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/bg_welcome"
+        android:scaleType="centerCrop"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Branding Section with Glass Effect -->
     <LinearLayout
         android:id="@+id/branding_container"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
+        android:padding="24dp"
+        android:background="@drawable/bg_glass"
+        app:layout_constraintWidth_percent="0.85"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/input_container"
-        app:layout_constraintVertical_bias="0.4">
+        app:layout_constraintVertical_bias="0.45">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="100dp"
@@ -31,8 +43,7 @@
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:src="@drawable/ic_video"
-                app:tint="@color/lanflix_primary"
+                android:src="@drawable/ic_lanflix_logo"
                 android:padding="20dp"/>
         </com.google.android.material.card.MaterialCardView>
 
@@ -72,8 +83,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:padding="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="40dp">
+        android:layout_marginBottom="24dp">
 
         <TextView
             android:layout_width="wrap_content"

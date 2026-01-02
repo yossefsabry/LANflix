@@ -5,12 +5,14 @@ import com.thiyagu.media_server.data.UserPreferences
 import com.thiyagu.media_server.data.db.MediaDatabase
 import com.thiyagu.media_server.data.repository.MediaRepository
 import com.thiyagu.media_server.data.repository.UserRepository
+import com.thiyagu.media_server.server.ServerDiscoveryManager
 import com.thiyagu.media_server.server.ServerManager
 import com.thiyagu.media_server.viewmodel.HomeViewModel
 import com.thiyagu.media_server.viewmodel.ProfileViewModel
 import com.thiyagu.media_server.viewmodel.StreamingViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
+import com.thiyagu.media_server.viewmodel.MediaManagementViewModel
 import org.koin.dsl.module
 
 val appModule = module {
@@ -31,6 +33,7 @@ val appModule = module {
 
     // Managers
     single { ServerManager(androidContext()) }
+    single { ServerDiscoveryManager(androidContext()) }
 
     // Repositories
     single { MediaRepository(androidContext(), get()) }
@@ -40,4 +43,5 @@ val appModule = module {
     viewModel { HomeViewModel(get()) }
     viewModel { ProfileViewModel(get()) }
     viewModel { StreamingViewModel(get(), get(), get()) }
+    viewModel { MediaManagementViewModel(androidContext()) }
 }

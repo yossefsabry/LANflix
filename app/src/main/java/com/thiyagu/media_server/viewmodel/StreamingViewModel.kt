@@ -88,7 +88,12 @@ class StreamingViewModel(
         viewModelScope.launch {
             userPreferences.saveSelectedFolder(folderUri.toString())
             val includeSubfolders = userPreferences.subfolderScanningFlow.first()
+            
+            // 1. Sync Database
             mediaRepository.scanAndSync(folderUri, includeSubfolders)
+            
+            // 2. Refresh Running Server Cache
+            serverManager.refreshCache()
         }
     }
 

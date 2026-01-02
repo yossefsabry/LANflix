@@ -35,4 +35,14 @@
     <color name="text_primary">#000000</color>
     <color name="text_secondary">#757575</color>
     <color name="accent_purple">#667eea</color>
+
+    <color name="app_bar_bg">@color/lanflix_bg</color>
+    <color name="card_stroke_color">#D4D4D8</color>
+
+    <!-- Home Card Cards (Light Mode) -->
+    <color name="home_card_overlay">#F2FFFFFF</color>
+    <color name="home_card_text_primary">@color/lanflix_text_main</color>
+    <color name="home_card_text_secondary">@color/lanflix_text_sub</color>
+    <!-- Use a light bg for icon container in light mode -->
+    <color name="home_card_icon_bg">@color/lanflix_surface_light</color>
 </resources>

@@ -10,8 +10,12 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
 class ClientActivity : AppCompatActivity() {
 
@@ -20,7 +24,8 @@ class ClientActivity : AppCompatActivity() {
     private lateinit var loadingIndicator: ProgressBar
     private lateinit var etIpAddress: TextInputEditText
     private lateinit var rvServers: androidx.recyclerview.widget.RecyclerView
-    private lateinit var discoveryManager: com.thiyagu.media_server.server.ServerDiscoveryManager
+    private lateinit var rvServers: androidx.recyclerview.widget.RecyclerView
+    private val discoveryManager: com.thiyagu.media_server.server.ServerDiscoveryManager by inject()
     private lateinit var serverAdapter: com.thiyagu.media_server.server.ServerAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,9 +53,33 @@ class ClientActivity : AppCompatActivity() {
             }
         }
 
-        // Configure WebView
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
+        // Configure WebView with performance optimizations
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null) // Hardware acceleration
+        
+        // Optimize Render Priority (API 26+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
+        }
+        
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            
+            // Performance improvements
+            cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            databaseEnabled = true
+            
+            // Media optimizations
+            mediaPlaybackRequiresUserGesture = false
+            allowFileAccess = false // Security
+            allowContentAccess = false
+            
+            // Zoom and viewport
+            setSupportZoom(false)
+            builtInZoomControls = false
+            useWideViewPort = true
+            loadWithOverviewMode = true
+        }
         
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -66,18 +95,51 @@ class ClientActivity : AppCompatActivity() {
                     return true
                 }
                 
+
+
+                if (url.endsWith(".mp4", true) || url.endsWith(".mkv", true) || url.endsWith(".avi", true) || url.endsWith(".mov", true) || url.endsWith(".webm", true)) {
+                    // Handle Video: Launch Native Player
+                    val intent = android.content.Intent(this@ClientActivity, VideoPlayerActivity::class.java)
+                    intent.putExtra("VIDEO_URL", url)
+                    startActivity(intent)
+                    return true
+                }
+                
+                
                 if (url.endsWith("/profile") || url == "http://profile/") {
                     // Handle Profile: Navigate to ProfileActivity
                     try {
                         val intent = android.content.Intent(this@ClientActivity, ProfileActivity::class.java)
+                        intent.putExtra("SOURCE_ACTIVITY", "ClientActivity")
                         startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(this@ClientActivity, "Could not open profile", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ClientActivity, getString(R.string.error_open_profile), Toast.LENGTH_SHORT).show()
+                    }
+                    return true
+                }
+                
+                if (url.endsWith("/settings") || url == "http://settings/") {
+                    // Handle Settings: Navigate to AppSettingsActivity
+                    try {
+                        val intent = android.content.Intent(this@ClientActivity, AppSettingsActivity::class.java)
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ClientActivity, getString(R.string.error_open_settings), Toast.LENGTH_SHORT).show()
                     }
                     return true
                 }
                 
                 return false // Keep navigation inside WebView
+            }
+
+            // Optimization: Show WebView as soon as content is visible (API 23+)
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+                if (url != "about:blank") {
+                    loadingIndicator.visibility = View.GONE
+                    webView.visibility = View.VISIBLE
+                    connectionContainer.visibility = View.GONE
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -91,26 +153,74 @@ class ClientActivity : AppCompatActivity() {
             }
             
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
-                Toast.makeText(this@ClientActivity, "Error: $description", Toast.LENGTH_SHORT).show()
                 loadingIndicator.visibility = View.GONE
                 connectionContainer.visibility = View.VISIBLE
+                
+                // Show helpful error message
+                val errorMsg = when (errorCode) {
+                    android.webkit.WebViewClient.ERROR_HOST_LOOKUP -> 
+                        this@ClientActivity.getString(R.string.error_host_lookup)
+                    android.webkit.WebViewClient.ERROR_CONNECT -> 
+                        this@ClientActivity.getString(R.string.error_connect)
+                    android.webkit.WebViewClient.ERROR_TIMEOUT -> 
+                        this@ClientActivity.getString(R.string.error_timeout)
+                    else -> this@ClientActivity.getString(R.string.error_connection_general, description ?: "Unknown error")
+                }
+                
+                androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
+                androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
+                    .setTitle(this@ClientActivity.getString(R.string.dialog_connection_failed_title))
+                    .setMessage(errorMsg)
+                    .setPositiveButton(this@ClientActivity.getString(R.string.action_retry)) { _, _ ->
+                        failingUrl?.let { loadUrl(it) }
+                    }
+                    .setNegativeButton(this@ClientActivity.getString(R.string.action_cancel), null)
+                    .show()
             }
         }
 
         btnConnect.setOnClickListener {
             val ipAddress = etIpAddress.text.toString().trim()
             if (ipAddress.isNotEmpty()) {
-                val url = "http://$ipAddress:8888"
+                // Dismiss keyboard
+                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                imm.hideSoftInputFromWindow(etIpAddress.windowToken, 0)
+
+                val theme = if (isDarkMode()) "dark" else "light"
+                val url = "http://$ipAddress:8888?theme=$theme"
                 loadUrl(url)
             }
         }
         
         // --- Server Discovery Setup ---
         setupDiscovery()
+        
+        // Modern back press handling
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.visibility == View.VISIBLE && webView.canGoBack()) {
+                    webView.goBack()
+                } else if (webView.visibility == View.VISIBLE) {
+                    // If at root of WebView, go back to connection screen
+                    webView.visibility = View.GONE
+                    connectionContainer.visibility = View.VISIBLE
+                    webView.stopLoading()
+                    webView.loadUrl("about:blank")
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+    }
+    
+    private fun isDarkMode(): Boolean {
+        val nightModeFlags = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        return nightModeFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
     
     private fun setupDiscovery() {
-        discoveryManager = com.thiyagu.media_server.server.ServerDiscoveryManager(this)
+        // discoveryManager injected via Koin
         serverAdapter = com.thiyagu.media_server.server.ServerAdapter { server ->
             // Click Handler
             if (server.isSecured) {
@@ -118,44 +228,48 @@ class ClientActivity : AppCompatActivity() {
             } else {
                 // Direct Connect
                 etIpAddress.setText(server.ip)
-                loadUrl("http://${server.ip}:${server.port}")
+                val theme = if (isDarkMode()) "dark" else "light"
+                loadUrl("http://${server.ip}:${server.port}?theme=$theme")
             }
         }
         
         rvServers.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         rvServers.adapter = serverAdapter
         
-        // Observe
-        lifecycleScope.launchWhenStarted {
-            discoveryManager.discoveredServers.collect { list ->
-                serverAdapter.submitList(list)
+        // Observe with lifecycle-aware collection
+        lifecycleScope.launch {
+            this@ClientActivity.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                discoveryManager.discoveredServers.collect { list ->
+                    serverAdapter.submitList(list)
+                }
             }
         }
     }
     
     private fun showPasswordDialog(server: com.thiyagu.media_server.server.DiscoveredServer) {
         val input = com.google.android.material.textfield.TextInputEditText(this)
-        input.hint = "Password"
+        input.hint = getString(R.string.hint_password)
         val layout = LinearLayout(this)
         layout.setPadding(50, 20, 50, 20)
         layout.addView(input)
 
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Password Required")
-            .setMessage("Enter password for ${server.name}")
+            .setTitle(getString(R.string.dialog_password_title))
+            .setMessage(getString(R.string.dialog_password_message, server.name))
             .setView(layout)
-            .setPositiveButton("Connect") { _, _ ->
+            .setPositiveButton(getString(R.string.action_connect)) { _, _ ->
                  val password = input.text.toString()
                  // TODO: Verify password with server. 
                  // For now, we assume success if password is "admin"
                  if (password == "admin") {
                      etIpAddress.setText(server.ip)
-                     loadUrl("http://${server.ip}:${server.port}")
+                     val theme = if (isDarkMode()) "dark" else "light"
+                     loadUrl("http://${server.ip}:${server.port}?theme=$theme")
                  } else {
-                     Toast.makeText(this, "Incorrect Password", Toast.LENGTH_SHORT).show()
+                     Toast.makeText(this, getString(R.string.error_incorrect_password), Toast.LENGTH_SHORT).show()
                  }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.action_cancel), null)
             .show()
     }
 
@@ -175,19 +289,7 @@ class ClientActivity : AppCompatActivity() {
         webView.loadUrl(url)
     }
 
-    override fun onBackPressed() {
-        if (webView.visibility == View.VISIBLE && webView.canGoBack()) {
-            webView.goBack()
-        } else if (webView.visibility == View.VISIBLE) {
-            // If at root of WebView, go back to connection screen
-            webView.visibility = View.GONE
-            connectionContainer.visibility = View.VISIBLE
-            webView.stopLoading()
-            webView.loadUrl("about:blank")
-        } else {
-            super.onBackPressed()
-        }
-    }
+
     
     override fun onDestroy() {
         super.onDestroy()

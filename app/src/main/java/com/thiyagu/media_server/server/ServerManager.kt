@@ -95,6 +95,10 @@ class ServerManager(private val context: Context) {
     fun isRunning(): Boolean {
         return _state.value is ServerState.Running
     }
+    
+    suspend fun refreshCache() {
+         server?.refreshCache()
+    }
 
     private fun getLocalIpAddress(): String? {
         try {

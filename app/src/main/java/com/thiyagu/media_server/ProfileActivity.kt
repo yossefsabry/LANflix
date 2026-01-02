@@ -34,7 +34,20 @@ class ProfileActivity : AppCompatActivity() {
                 }
             }
 
-            binding.btnBack.setOnClickListener { finish() }
+            
+            binding.btnBack.setOnClickListener {
+                val source = intent.getStringExtra("SOURCE_ACTIVITY")
+                when (source) {
+                    "ClientActivity" -> {
+                        // Return to Home instead of staying in ClientActivity's WebView
+                        val intent = Intent(this, HomeActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        startActivity(intent)
+                        finish()
+                    }
+                    else -> finish()
+                }
+            }
 
             binding.btnLogout.setOnClickListener { logout() }
             

@@ -21,6 +21,16 @@ class WelcomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_welcome)
 
+        // Apply Native Blur on API 31+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            val brandingContainer = findViewById<android.widget.LinearLayout>(R.id.branding_container)
+            brandingContainer.setRenderEffect(
+                android.graphics.RenderEffect.createBlurEffect(
+                    30f, 30f, android.graphics.Shader.TileMode.MIRROR
+                )
+            )
+        }
+
         val etUsername = findViewById<TextInputEditText>(R.id.et_username)
         val btnGetStarted = findViewById<MaterialButton>(R.id.btn_get_started)
 

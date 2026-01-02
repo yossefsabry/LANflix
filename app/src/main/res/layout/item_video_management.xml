@@ -35,6 +35,14 @@
             android:padding="8dp"
             app:tint="@color/lanflix_text_sub"/>
 
+        <ProgressBar
+            android:id="@+id/progressBar_loading"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone"
+            android:indeterminateTint="@color/lanflix_primary"/>
+
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"

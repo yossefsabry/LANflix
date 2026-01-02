@@ -29,7 +29,6 @@ class SplashActivity : AppCompatActivity() {
 
     private fun checkNetworkAndProceed() {
         if (isNetworkAvailable()) {
-            Handler().postDelayed({
                 // Check if user is logged in using DataStore
                 lifecycleScope.launch {
                     val username = userPreferences.usernameFlow.first()
@@ -42,7 +41,6 @@ class SplashActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish() // Prevent going back to splash
                 }
-            }, 3000)
         } else {
             showNoConnectionDialog()
         }
