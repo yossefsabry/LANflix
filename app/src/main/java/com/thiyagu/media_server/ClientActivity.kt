@@ -1,7 +1,10 @@
 package com.thiyagu.media_server
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -29,6 +32,11 @@ class ClientActivity : AppCompatActivity() {
     
     // Security: Track connected host strictness
     private var currentHost: String? = null
+    
+    // Connection timeout handling
+    private val connectionTimeoutHandler = Handler(Looper.getMainLooper())
+    private var connectionTimeoutRunnable: Runnable? = null
+    private val CONNECTION_TIMEOUT_MS = 30000L // 30 seconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,10 +53,8 @@ class ClientActivity : AppCompatActivity() {
         
         btnBack.setOnClickListener {
             if (webView.visibility == android.view.View.VISIBLE) {
-                // Return to input mode
-                webView.visibility = android.view.View.GONE
-                webView.loadUrl("about:blank")
-                findViewById<android.view.View>(R.id.connection_container).visibility = android.view.View.VISIBLE
+                // Return to input mode with full reset
+                resetWebViewState()
             } else {
                 // Return to Home
                 finish()
@@ -97,14 +103,8 @@ class ClientActivity : AppCompatActivity() {
                 val url = request?.url?.toString() ?: return false
                 
                 if (url.endsWith("/exit") || url == "http://exit/") {
-                    // Handle Exit: Stops loading, hides webview, shows connection screen
-                    webView.stopLoading()
-                    webView.clearHistory()
-                    webView.visibility = View.GONE
-                    connectionContainer.visibility = View.VISIBLE
-                    webView.loadUrl("about:blank")
-                    // Ensure overlay is hidden
-                     loadingOverlay.visibility = View.GONE
+                    // Handle Exit: Full reset to connection screen
+                    resetWebViewState()
                     return true
                 }
                 
@@ -144,12 +144,7 @@ class ClientActivity : AppCompatActivity() {
                 val requestHost = android.net.Uri.parse(url).host
                 if (currentHost != null && requestHost != null && requestHost != currentHost) {
                     // Unauthorized Redirect Detected! Disconnect immediately.
-                    webView.stopLoading()
-                    webView.clearHistory()
-                    webView.visibility = View.GONE
-                    connectionContainer.visibility = View.VISIBLE
-                    webView.loadUrl("about:blank")
-                    loadingOverlay.visibility = View.GONE
+                    resetWebViewState()
                     Toast.makeText(this@ClientActivity, "Disconnected: External redirect blocked", Toast.LENGTH_LONG).show()
                     return true
                 }
@@ -160,6 +155,7 @@ class ClientActivity : AppCompatActivity() {
             // Optimization: Show WebView as soon as content is visible (API 23+)
             override fun onPageCommitVisible(view: WebView?, url: String?) {
                 super.onPageCommitVisible(view, url)
+                cancelConnectionTimeout() // Connection succeeded
                 loadingOverlay.visibility = View.GONE // Always hide loader
                 if (url != "about:blank") {
                     webView.visibility = View.VISIBLE
@@ -169,6 +165,7 @@ class ClientActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                cancelConnectionTimeout() // Connection succeeded
                 loadingOverlay.visibility = View.GONE // Always hide loader
                 // Prevent white screen flash by ignoring about:blank
                 if (url != "about:blank") {
@@ -206,6 +203,10 @@ class ClientActivity : AppCompatActivity() {
         btnConnect.setOnClickListener {
             val ipAddress = etIpAddress.text.toString().trim()
             if (ipAddress.isNotEmpty()) {
+                // Show loading immediately for instant feedback
+                loadingOverlay.visibility = View.VISIBLE
+                connectionContainer.visibility = View.GONE
+                
                 // Dismiss keyboard
                 val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 imm.hideSoftInputFromWindow(etIpAddress.windowToken, 0)
@@ -226,11 +227,8 @@ class ClientActivity : AppCompatActivity() {
                 if (webView.visibility == View.VISIBLE && webView.canGoBack()) {
                     webView.goBack()
                 } else if (webView.visibility == View.VISIBLE) {
-                    // If at root of WebView, go back to connection screen
-                    webView.visibility = View.GONE
-                    connectionContainer.visibility = View.VISIBLE
-                    webView.stopLoading()
-                    webView.loadUrl("about:blank")
+                    // If at root of WebView, go back to connection screen with full reset
+                    resetWebViewState()
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -314,9 +312,83 @@ class ClientActivity : AppCompatActivity() {
         discoveryManager.stopDiscovery()
     }
 
+    private fun resetWebViewState() {
+        // Comprehensive WebView reset for clean reconnections
+        webView.apply {
+            stopLoading()
+            loadUrl("about:blank")
+            clearHistory()
+            clearCache(true)
+            clearFormData()
+            
+            // Clear all WebView storage
+            clearSslPreferences()
+            clearMatches()
+            
+            // Clear cookies
+            CookieManager.getInstance().apply {
+                removeAllCookies(null)
+                flush()
+            }
+            
+            // Clear all storage types (requires API 21+)
+            android.webkit.WebStorage.getInstance().deleteAllData()
+        }
+        
+        // Reset connection state
+        currentHost = null
+        
+        // Ensure UI is in correct state
+        webView.visibility = View.GONE
+        connectionContainer.visibility = View.VISIBLE
+        loadingOverlay.visibility = View.GONE
+    }
+    
+    private fun startConnectionTimeout() {
+        cancelConnectionTimeout()
+        
+        connectionTimeoutRunnable = Runnable {
+            // Timeout fired - connection hung
+            webView.stopLoading()
+            loadingOverlay.visibility = View.GONE
+            
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Connection Timeout")
+                .setMessage("Unable to connect to server. Please check:\n\n• Server is running\n• Both devices are on the same Wi-Fi\n• Server IP address is correct")
+                .setPositiveButton("Retry") { _, _ ->
+                    val ipAddress = etIpAddress.text.toString().trim()
+                    if (ipAddress.isNotEmpty()) {
+                        currentHost = ipAddress
+                        val theme = if (isDarkMode()) "dark" else "light"
+                        loadUrl("http://$ipAddress:8888?theme=$theme")
+                    }
+                }
+                .setNegativeButton("Cancel") { _, _ ->
+                    resetWebViewState()
+                }
+                .show()
+        }
+        
+        connectionTimeoutHandler.postDelayed(connectionTimeoutRunnable!!, CONNECTION_TIMEOUT_MS)
+    }
+    
+    private fun cancelConnectionTimeout() {
+        connectionTimeoutRunnable?.let {
+            connectionTimeoutHandler.removeCallbacks(it)
+            connectionTimeoutRunnable = null
+        }
+    }
+
     private fun loadUrl(url: String) {
+        // Clear cache before new connection to ensure fresh start
+        webView.clearCache(true)
+        
         loadingOverlay.visibility = View.VISIBLE
         connectionContainer.visibility = View.GONE
+        
+        // Start timeout timer
+        startConnectionTimeout()
+        
         webView.loadUrl(url)
     }
 
@@ -324,6 +396,9 @@ class ClientActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Cancel any pending timeout
+        cancelConnectionTimeout()
         
         // Proper WebView cleanup to prevent memory leaks
         webView.apply {

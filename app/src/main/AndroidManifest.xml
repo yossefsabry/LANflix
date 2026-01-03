@@ -51,6 +51,12 @@
              android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
              android:screenOrientation="landscape"
              android:theme="@style/Theme.AppCompat.NoActionBar"/>
+        
+        <activity
+            android:name=".CrashActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@style/Theme.AppCompat.NoActionBar"/>
 
         <service
             android:name=".service.MediaServerService"

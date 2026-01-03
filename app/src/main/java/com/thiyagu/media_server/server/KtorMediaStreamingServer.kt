@@ -20,12 +20,18 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Media Streaming Server implementation using Ktor.
  * 
  * Handles file serving, directory listing, and video streaming over HTTP.
  * Supports "Tree Mode" (SAF Tree Uri) and "Flat Mode" (Recursive scan).
+ * 
+ * Refactored to support Progressive Scanning and Live Status.
  * 
  * @property appContext Android Context
  * @property treeUri URI of the root directory to serve
@@ -38,9 +44,15 @@ class KtorMediaStreamingServer(
 ) {
     private var server: ApplicationEngine? = null
     
-    // Cache for file list (Flat Mode)
-    @Volatile private var cachedFiles: List<DocumentFile> = emptyList()
-    @Volatile private var cacheTimestamp: Long = 0L
+    // Optimized Caches for O(1) Access and Thread Safety
+    // filename -> DocumentFile
+    private val cachedFilesMap = ConcurrentHashMap<String, DocumentFile>()
+    // Ordered list for pagination
+    private val allVideoFiles = java.util.Collections.synchronizedList(java.util.ArrayList<DocumentFile>())
+    
+    // Scanning State
+    private val isScanning = AtomicBoolean(false)
+    private val scannedCount = AtomicInteger(0)
     
     // structured concurrency scope
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -49,7 +61,8 @@ class KtorMediaStreamingServer(
     private val directoryCache = java.util.concurrent.ConcurrentHashMap<String, CachedDirectory>()
     
     private val CACHE_DURATION_MS = 60_000L // 60 seconds
-    
+    @Volatile private var flatCacheTimestamp: Long = 0L
+
     private data class CachedDirectory(
         val files: List<DocumentFile>,
         val timestamp: Long
@@ -61,7 +74,7 @@ class KtorMediaStreamingServer(
      */
     fun start() {
         scope.launch {
-            // Initial cached scan
+            // Initial scan (Progressive)
             refreshCache()
             
             try {
@@ -80,7 +93,43 @@ class KtorMediaStreamingServer(
                         get("/api/refresh") {
                             directoryCache.clear()
                             refreshCache()
-                            call.respondText("Cache Refreshed", status = HttpStatusCode.OK)
+                            call.respondText("Cache Refresh Started", status = HttpStatusCode.OK)
+                        }
+                        
+                        // API for Scan Status
+                        get("/api/status") {
+                            val status = """{"scanning": ${isScanning.get()}, "count": ${scannedCount.get()}}"""
+                            call.respondText(status, ContentType.Application.Json, HttpStatusCode.OK)
+                        }
+                        
+                        // API for paginated video loading
+                        get("/api/videos") {
+                            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                            val limit = 20
+                            val offset = (page - 1) * limit
+                            
+                            val visibilityManager = com.thiyagu.media_server.utils.VideoVisibilityManager(appContext)
+                            
+                            // Snapshot of current list
+                            val currentVideos = synchronized(allVideoFiles) { allVideoFiles.toList() }
+                            
+                            val filteredVideos = currentVideos.filter { 
+                                !visibilityManager.isVideoHidden(it.uri.toString())
+                            }
+                            
+                            val totalVideos = filteredVideos.size
+                            val paginatedVideos = filteredVideos.drop(offset).take(limit)
+                            
+                            // Build JSON response
+                            val videosJson = paginatedVideos.joinToString(",") { file ->
+                                val name = file.name ?: "Unknown"
+                                val fileSize = file.length() / (1024 * 1024)
+                                """{"name":"${name.replace("\"", "\\\"")}","size":$fileSize}"""
+                            }
+                            
+                            val json = """{"videos":[$videosJson],"page":$page,"totalVideos":$totalVideos,"hasMore":${offset + limit < totalVideos}}"""
+                            
+                            call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
                         }
 
                         get("/") {
@@ -146,6 +195,19 @@ class KtorMediaStreamingServer(
         }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .progress-bar-container {
+             position: fixed;
+             top: 60px; /* Below header */
+             left: 0;
+             right: 0;
+             z-index: 40;
+             pointer-events: none;
+             transition: transform 0.3s ease;
+             transform: translateY(-100%);
+        }
+        .progress-bar-container.visible {
+            transform: translateY(0);
+        }
     </style>
     <script>
         // Persistence Logic
@@ -209,6 +271,17 @@ class KtorMediaStreamingServer(
         </div>
     </header>
 
+    <!-- Scanning Progress Bar -->
+    <div id="scanning-bar" class="progress-bar-container bg-primary/10 backdrop-blur-md border-b border-primary/20">
+        <div class="px-4 py-2 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                 <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                 <span class="text-xs font-medium text-primary">Scanning Media Library...</span>
+            </div>
+            <span id="scan-count" class="text-xs font-bold text-text-main">0 items</span>
+        </div>
+    </div>
+
     <main class="px-4 py-4 space-y-6">
 """)
                                 
@@ -242,10 +315,10 @@ class KtorMediaStreamingServer(
                                             }
                                         }
 
-                                        if (currentDir == null || !currentDir!!.isDirectory) {
+                                        if (currentDir == null || !currentDir.isDirectory) {
                                             writer.write("""<div class="w-full text-center py-20 text-text-sub">Directory not found</div>""")
                                         } else {
-                                            val allItems = getDirectoryListing(currentDir!!)
+                                            val allItems = getDirectoryListing(currentDir)
                                                 .filter { !it.name!!.startsWith(".") }
                                                 .sortedWith(compareBy({ !it.isDirectory }, { it.name }))
                                             
@@ -316,112 +389,232 @@ class KtorMediaStreamingServer(
                                         }
 
                                     } else {
-                                        // --- DEFAULT FLAT MODE ---
-                                        val dir = DocumentFile.fromTreeUri(appContext, treeUri)
-                                        if (dir == null || !dir.isDirectory) {
-                                            writer.write("""<div class="w-full text-center py-20 text-text-sub">Directory not found or accessible</div>""")
-                                        } else {
-                                            // Use Flat Cache
-                                            refreshCacheIfNeeded() // Ensure cache is warm
-                                            val allFiles = cachedFiles.filter { 
-                                                !it.isDirectory && it.name != null && 
-                                                (it.name!!.endsWith(".mp4", true) || it.name!!.endsWith(".mkv", true) || it.name!!.endsWith(".avi", true) || it.name!!.endsWith(".mov", true) || it.name!!.endsWith(".webm", true)) &&
-                                                !visibilityManager.isVideoHidden(it.uri.toString())
-                                            }
-        
-                                            val recentFiles = allFiles.sortedByDescending { it.lastModified() }.take(5)
-                    
-                                            // Recently Added
-                                            writer.write("""
-                                            <div class="relative mb-6">
-                                                <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-text-sub">search</span>
-                                                <input type="text" placeholder="Search local videos..." 
-                                                    class="w-full bg-surface-light border border-white/5 rounded-full py-3.5 pl-12 pr-12 text-sm placeholder:text-text-sub/50 focus:ring-1 focus:ring-primary focus:border-primary/50 transition-all outline-none text-text-main">
-                                                <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-white/5 text-text-sub">
-                                                    <span class="material-symbols-rounded text-[20px]">tune</span>
-                                                </button>
-                                            </div>
-                                            <section>
-                                                <div class="flex items-center justify-between mb-4">
-                                                     <h2 class="text-lg font-bold">Recently Added</h2>
-                                                     <button class="text-xs font-bold text-primary">See All</button>
-                                                </div>
-                                                <div class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">""")
-                                            
-                                            for (file in recentFiles) {
-                                                val name = file.name ?: "Unknown"
-                                                val fileSize = file.length() / (1024 * 1024)
-                                                writer.write("""
-                                                    <a href="/${name}" class="flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5">
-                                                        <img data-src="/api/thumbnail/${name}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
-                                                        <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                                            <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-white text-3xl">play_arrow</span></div>
-                                                        </div>
-                                                        <div class="absolute inset-0 flex items-center justify-center bg-white/5 -z-10"><span class="material-symbols-rounded text-4xl text-text-sub/20">movie</span></div>
-                                                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-                                                        <div class="absolute bottom-3 left-3 right-3">
-                                                            <h3 class="font-bold text-sm text-white line-clamp-1 mb-1">${name}</h3>
-                                                            <div class="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
-                                                                <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded">NEW</span>
-                                                                <span>${fileSize} MB</span>
-                                                            </div>
-                                                        </div>
-                                                    </a>""")
-                                            }
-                                            if (recentFiles.isEmpty()) writer.write("""<div class="w-full text-center py-8 text-text-sub text-sm">No recent videos</div>""")
-                                            writer.write("""</div></section>""")
-                                            
-                                            // All Videos
-                                            writer.write("""
-                                            <section class="mt-6">
-                                                <div class="flex items-center justify-between mb-4">
-                                                     <h2 class="text-lg font-bold">All Videos</h2>
-                                                     <span class="text-xs text-text-sub/60 font-medium">${allFiles.size} Videos</span>
-                                                </div>
-                                                <div class="grid grid-cols-2 gap-4">""")
-                                                
-                                            // Apply limit here too? The task says "Implement Pagination Limit Enforcement"
-                                            // The user code for All videos in Flat mode actually loads ALL videos? 
-                                            // Original code: val pagedItems = allItems.drop((pageParam - 1) * limit).take(limit) was ONLY in TREE mode.
-                                            // Flat mode had NO pagination in original code!
-                                            // I will leave Flat mode as is for now regarding pagination to match original behavior unless I see explicit instructions to add it to flat mode.
-                                            // The user request said "No pagination limit enforcement" as a warning.
-                                            // I should probably add pagination to Flat mode too, but that's a UI change (Need 'Next' button). 
-                                            // For now, I will stick to exact recreation of Flat mode but with streaming.
-                                            
-                                            for (file in allFiles) {
-                                                val name = file.name ?: "Unknown"
-                                                val fileSize = file.length() / (1024 * 1024)
-                                                writer.write("""
-                                                    <a href="/${name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
-                                                         <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
-                                                             <img data-src="/api/thumbnail/${name}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
-                                                             <div class="absolute inset-0 flex items-center justify-center -z-10">
-                                                                 <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
-                                                             </div>
-                                                             <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
-                                                                 <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
-                                                             </div>
-                                                         </div>
-                                                         <div class="px-1 pb-1">
-                                                             <h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">${name}</h3>
-                                                             <p class="text-[11px] text-text-sub">${fileSize} MB • Local</p>
-                                                         </div>
-                                                    </a>""")
-                                            }
-                                            if (allFiles.isEmpty()) writer.write("""
-                                                <div class="col-span-full py-20 text-center">
-                                                    <div class="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                                                        <span class="material-symbols-rounded text-5xl text-primary">folder_open</span>
-                                                    </div>
-                                                    <h3 class="text-xl font-bold text-text-main mb-2">No Videos Found</h3>
-                                                    <p class="text-text-sub max-w-sm mx-auto mb-4">Add video files to your shared folder to see them here</p>
-                                                    <div class="inline-block bg-surface-light px-4 py-2 rounded-lg text-xs text-text-sub font-mono">
-                                                        Supported: MP4, MKV, AVI, MOV, WEBM
-                                                    </div>
-                                                </div>""")
-                                            writer.write("""</div></section>""")
+                                        // --- DEFAULT FLAT MODE (Live/Progressive) ---
+                                        
+                                        // No directory check needed here (scanning or cached)
+                                        // Simply show what we have so far
+                                        
+                                        val currentFiles = synchronized(allVideoFiles) { allVideoFiles.toList() }
+                                        val filteredFiles = currentFiles.filter { 
+                                            !visibilityManager.isVideoHidden(it.uri.toString())
                                         }
+    
+                                        val recentFiles = filteredFiles.sortedByDescending { it.lastModified() }.take(5)
+                    
+                                        // Recently Added
+                                        writer.write("""
+                                        <div class="relative mb-6">
+                                            <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-text-sub">search</span>
+                                            <input type="text" placeholder="Search local videos..." 
+                                                class="w-full bg-surface-light border border-white/5 rounded-full py-3.5 pl-12 pr-12 text-sm placeholder:text-text-sub/50 focus:ring-1 focus:ring-primary focus:border-primary/50 transition-all outline-none text-text-main">
+                                            <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-white/5 text-text-sub">
+                                                <span class="material-symbols-rounded text-[20px]">tune</span>
+                                            </button>
+                                        </div>
+                                        <section>
+                                            <div class="flex items-center justify-between mb-4">
+                                                 <h2 class="text-lg font-bold">Recently Added</h2>
+                                                 <button class="text-xs font-bold text-primary">See All</button>
+                                            </div>
+                                            <div class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">""")
+                                        
+                                        for (file in recentFiles) {
+                                            val name = file.name ?: "Unknown"
+                                            val fileSize = file.length() / (1024 * 1024)
+                                            writer.write("""
+                                                <a href="/${name}" class="flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5">
+                                                    <img data-src="/api/thumbnail/${name}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
+                                                    <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                        <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-white text-3xl">play_arrow</span></div>
+                                                    </div>
+                                                    <div class="absolute inset-0 flex items-center justify-center bg-white/5 -z-10"><span class="material-symbols-rounded text-4xl text-text-sub/20">movie</span></div>
+                                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                                                    <div class="absolute bottom-3 left-3 right-3">
+                                                        <h3 class="font-bold text-sm text-white line-clamp-1 mb-1">${name}</h3>
+                                                        <div class="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
+                                                            <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded">NEW</span>
+                                                            <span>${fileSize} MB</span>
+                                                        </div>
+                                                    </div>
+                                                </a>""")
+                                        }
+                                        if (recentFiles.isEmpty()) writer.write("""<div class="w-full text-center py-8 text-text-sub text-sm">No recent videos</div>""")
+                                        writer.write("""</div></section>""")
+                                        
+                                        // All Videos - Progressive Loading
+                                        writer.write("""
+                                        <section class="mt-6">
+                                            <div class="flex items-center justify-between mb-4">
+                                                 <h2 class="text-lg font-bold">All Videos</h2>
+                                                 <span id="video-count" class="text-xs text-text-sub/60 font-medium">Loading...</span>
+                                            </div>
+                                            <div id="video-grid" class="grid grid-cols-2 gap-4">
+                                                <!-- Skeleton loaders for immediate feedback -->
+                                                <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
+                                                    <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
+                                                   <div class="px-1 pb-1 space-y-2">
+                                                        <div class="h-4 bg-background rounded w-3/4"></div>
+                                                        <div class="h-3 bg-background rounded w-1/2"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
+                                                    <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
+                                                    <div class="px-1 pb-1 space-y-2">
+                                                        <div class="h-4 bg-background rounded w-3/4"></div>
+                                                        <div class="h-3 bg-background rounded w-1/2"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Loading indicator -->
+                                            <div id="loading-indicator" class="hidden col-span-full flex justify-center py-8">
+                                                <div class="flex items-center gap-3 text-text-sub">
+                                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                                </div>
+                                            </div>
+                                            <!-- Sentinel for infinite scroll -->
+                                            <div id="loading-sentinel"></div>
+                                        </section>
+                                        
+                                        <script>
+                                            let currentPage = 1;
+                                            let isLoading = false;
+                                            let hasMore = true;
+                                            let totalVideos = 0;
+                                            let pollInterval = null;
+                                            
+                                            // Progress Polling
+                                            function startPolling() {
+                                                const bar = document.getElementById('scanning-bar');
+                                                const countLabel = document.getElementById('scan-count');
+                                                
+                                                pollInterval = setInterval(async () => {
+                                                    try {
+                                                        const res = await fetch('/api/status');
+                                                        const status = await res.json();
+                                                        
+                                                        if (status.scanning) {
+                                                            bar.classList.add('visible');
+                                                            countLabel.innerText = status.count + ' items';
+                                                            
+                                                            // Reload grid occasionally to show new items if we are on first page
+                                                            // Or just update the count? 
+                                                            // Better: Only reset/reload if we have very few items shown
+                                                          
+                                                            // For now, let's trigger a reload if we're at the bottom or if it's the start
+                                                            if (totalVideos < status.count && currentPage === 1) {
+                                                                loadVideos(); 
+                                                            }
+                                                            
+                                                        } else {
+                                                            bar.classList.remove('visible');
+                                                            clearInterval(pollInterval);
+                                                            // Final load to ensure we have everything
+                                                            if (currentPage === 1) loadVideos();
+                                                        }
+                                                    } catch (e) { console.error(e); }
+                                                }, 2000);
+                                            }
+                                            
+                                            startPolling();
+
+                                            async function loadVideos() {
+                                                if (isLoading) return;
+                                                isLoading = true;
+                                                
+                                                const loadingIndicator = document.getElementById('loading-indicator');
+                                                if (loadingIndicator) loadingIndicator.classList.remove('hidden');
+                                                
+                                                try {
+                                                    const response = await fetch('/api/videos?page=' + currentPage);
+                                                    const data = await response.json();
+                                                    
+                                                    totalVideos = data.totalVideos;
+                                                    const countEl = document.getElementById('video-count');
+                                                    if (countEl) countEl.textContent = totalVideos + ' Videos';
+                                                   
+                                                    const videoGrid = document.getElementById('video-grid');
+                                                    
+                                                    // Remove skeleton loaders on first load
+                                                    if (currentPage === 1) {
+                                                        // clear grid to re-render in case of updates during scan
+                                                        // BUT, only clear if we are actually replacing content
+                                                        // videoGrid.innerHTML = ''; 
+                                                        // For smooth UX, better to diff or append. 
+                                                        // Simple approach: Clear skeletons only once
+                                                        videoGrid.querySelectorAll('.skeleton-card').forEach(el => el.remove());
+                                                        
+                                                        // If we are refreshing page 1 heavily, might want to clear existing real cards to avoid dupes?
+                                                        // Yes, for Page 1, simplify by clearing.
+                                                        videoGrid.innerHTML = '';
+                                                    }
+                                                    
+                                                    // Add videos to grid
+                                                    data.videos.forEach(video => {
+                                                        const videoCard = document.createElement('div');
+                                                        videoCard.innerHTML = '<a href="/' + video.name + '" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">' +
+                                                            '<div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">' +
+                                                                '<img data-src="/api/thumbnail/' + video.name + '" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>' +
+                                                                '<div class="absolute inset-0 flex items-center justify-center -z-10">' +
+                                                                    '<span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>' +
+                                                                '</div>' +
+                                                                '<div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">' +
+                                                                    '<span class="material-symbols-rounded text-white text-lg">play_arrow</span>' +
+                                                                '</div>' +
+                                                            '</div>' +
+                                                            '<div class="px-1 pb-1">' +
+                                                                '<h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">' + video.name + '</h3>' +
+                                                                '<p class="text-[11px] text-text-sub">' + video.size + ' MB • Local</p>' +
+                                                            '</div>' +
+                                                        '</a>';
+                                                        videoGrid.appendChild(videoCard.firstElementChild);
+                                                    });
+                                                    
+                                                    // Observe new images for lazy loading
+                                                    if ('IntersectionObserver' in window && typeof imageObserver !== 'undefined') {
+                                                        document.querySelectorAll('img[loading="lazy"]').forEach(img => imageObserver.observe(img));
+                                                    }
+                                                    
+                                                    // Only increment page if successful and full
+                                                    if (data.videos.length > 0) {
+                                                         currentPage++;
+                                                    }
+                                                    hasMore = data.hasMore;
+                                                    
+                                                    // Show "no videos" message if empty on first load
+                                                    if (!hasMore && data.videos.length === 0 && currentPage === 2 && totalVideos === 0) {
+                                                        videoGrid.innerHTML = '<div class="col-span-full py-20 text-center">' +
+                                                            '<div class="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">' +
+                                                                '<span class="material-symbols-rounded text-5xl text-primary">folder_open</span>' +
+                                                            '</div>' +
+                                                            '<h3 class="text-xl font-bold text-text-main mb-2">No Videos Found</h3>' +
+                                                            '<p class="text-text-sub max-w-sm mx-auto mb-4">Add video files to your shared folder to see them here</p>' +
+                                                            '<div class="inline-block bg-surface-light px-4 py-2 rounded-lg text-xs text-text-sub font-mono">Supported: MP4, MKV, AVI, MOV, WEBM</div>' +
+                                                        '</div>';
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Failed to load videos:', error);
+                                                } finally {
+                                                    isLoading = false;
+                                                    if (loadingIndicator) loadingIndicator.classList.add('hidden');
+                                                }
+                                            }
+                                            
+                                            // Set up intersection observer for infinite scroll
+                                            if ('IntersectionObserver' in window) {
+                                                const sentinelObserver = new IntersectionObserver((entries) => {
+                                                    if (entries[0].isIntersecting && hasMore) {
+                                                        loadVideos();
+                                                    }
+                                                }, { rootMargin: '200px' });
+                                                
+                                                const sentinel = document.getElementById('loading-sentinel');
+                                                if (sentinel) sentinelObserver.observe(sentinel);
+                                            }
+                                            
+                                            // Load first batch after 1 second for better UX
+                                            setTimeout(() => loadVideos(), 100);
+                                        </script>
+                                        </section>""")
                                     }
                                 } // End withContext
 
@@ -456,8 +649,8 @@ class KtorMediaStreamingServer(
                         get("/{filename}") {
                             val filename = call.parameters["filename"]
                             if (filename != null) {
-                                // Optimized: Look in Cache first!
-                                val targetFile = cachedFiles.find { it.name == filename }
+                                // Optimized: Look in Map Cache first!
+                                val targetFile = cachedFilesMap[filename]
                                 
                                 if (targetFile != null) {
                                     val length = targetFile.length()
@@ -490,10 +683,12 @@ class KtorMediaStreamingServer(
                         get("/api/thumbnail/{filename}") {
                             val filename = call.parameters["filename"]
                             if (filename != null) {
-                                val targetFile = cachedFiles.find { it.name == filename }
+                                val targetFile = cachedFilesMap[filename]
                                 if (targetFile != null) {
                                     val thumbnail = generateThumbnail(targetFile.uri, filename)
                                     if (thumbnail != null) {
+                                        // Cache for 30 days - Thumbnails don't change often
+                                        call.response.cacheControl(CacheControl.MaxAge(visibility = CacheControl.Visibility.Public, maxAgeSeconds = 2592000))
                                         call.respondBytes(thumbnail, ContentType.Image.JPEG)
                                     } else {
                                         call.respond(HttpStatusCode.NotFound)
@@ -518,7 +713,6 @@ class KtorMediaStreamingServer(
         }
 
         // Simple cache key: filename + .jpg
-        // Note: Ideally we should use hash of full path to avoid duplicates, but current system relies on filenames.
         val cacheFile = java.io.File(cacheDir, "$filename.jpg")
 
         if (cacheFile.exists()) {
@@ -567,25 +761,78 @@ class KtorMediaStreamingServer(
      * Refreshes the internal file cache.
      * 
      * In Tree Mode: Clears the directory listing cache.
-     * In Flat Mode: Rescans the entire directory tree for video files.
-     * This operation is performed on the IO dispatcher.
+     * In Flat Mode: Launches a background coroutine to scan recursively (Progressive Scan).
      */
     suspend fun refreshCache() {
         withContext(Dispatchers.IO) {
             val dir = DocumentFile.fromTreeUri(appContext, treeUri) ?: return@withContext
             
-            // Read preference here? No, pass it or read it inside Coroutine?
-            // We are in IO context. DataStore is fine.
             val includeSubfolders = com.thiyagu.media_server.data.UserPreferences(appContext).subfolderScanningFlow.first()
             
-            val files = if (includeSubfolders) {
-                scanRecursively(dir)
-            } else {
-                dir.listFiles().filter { it.isFile && it.name?.substringAfterLast('.', "")?.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") }
-            }
+            // Clear existing caches
+             // Note: For progressive reload, we might want to keep old ones until we find new ones? 
+             // But simpler to clear start fresh or else we get duplicates easily.
+             // If we clear, the UI will empty out until scan finds them.
+             
+            // To be safe and clean:
+            cachedFilesMap.clear()
+            allVideoFiles.clear()
+            scannedCount.set(0)
+            isScanning.set(true)
             
-            cachedFiles = files
-            cacheTimestamp = System.currentTimeMillis()
+            flatCacheTimestamp = System.currentTimeMillis()
+
+            scope.launch(Dispatchers.IO) {
+                try {
+                    if (includeSubfolders) {
+                        scanRecursivelyAsync(dir)
+                    } else {
+                        val files = dir.listFiles().filter { it.isFile && it.name?.substringAfterLast('.', "")?.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") }
+                        files.forEach { file ->
+                            file.name?.let { name ->
+                                cachedFilesMap[name] = file
+                                allVideoFiles.add(file)
+                            }
+                        }
+                        scannedCount.set(files.size)
+                    }
+                } finally {
+                    isScanning.set(false)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Recursive scan that updates collections progressively.
+     */
+    private fun scanRecursivelyAsync(root: DocumentFile) {
+        val stack = java.util.ArrayDeque<DocumentFile>()
+        stack.push(root)
+
+        while (stack.isNotEmpty()) {
+            // Optional check for cancellation
+            // if (!isActive) return
+
+            val current = stack.pop()
+            val children = current.listFiles() // Blocking IO
+            
+            for (child in children) {
+                if (child.isDirectory) {
+                    stack.push(child)
+                } else {
+                    if (child.name?.substringAfterLast('.', "")?.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm")) {
+                         child.name?.let { name ->
+                             // Thread-safe additions
+                             if (cachedFilesMap.putIfAbsent(name, child) == null) {
+                                 // Only add if not already present (first win)
+                                 allVideoFiles.add(child)
+                                 scannedCount.incrementAndGet()
+                             }
+                         }
+                    }
+                }
+            }
         }
     }
 
@@ -602,10 +849,13 @@ class KtorMediaStreamingServer(
     suspend fun refreshCacheIfNeeded() {
         val now = System.currentTimeMillis()
         
-        // Only refresh if cache is older than 30 seconds
-        if (now - cacheTimestamp < CACHE_DURATION_MS && cachedFiles.isNotEmpty()) {
+        // Only refresh if cache is older than 60 seconds OR if it's empty (maybe first load failed)
+        if (now - flatCacheTimestamp < CACHE_DURATION_MS && !allVideoFiles.isEmpty()) {
             return // Cache is fresh
         }
+        
+        // If scanning is already in progress, don't restart
+        if (isScanning.get()) return
         
         refreshCache()
     }
@@ -657,25 +907,5 @@ class KtorMediaStreamingServer(
         val files = dir.listFiles().toList()
         directoryCache[uriKey] = CachedDirectory(files, now)
         return files
-    }
-
-    private fun scanRecursively(root: DocumentFile): List<DocumentFile> {
-        val result = mutableListOf<DocumentFile>()
-        val stack = java.util.ArrayDeque<DocumentFile>()
-        stack.push(root)
-
-        while (stack.isNotEmpty()) {
-            val current = stack.pop()
-            val children = current.listFiles()
-            
-            for (child in children) {
-                if (child.isDirectory) {
-                    stack.push(child)
-                } else {
-                    result.add(child)
-                }
-            }
-        }
-        return result
     }
 }
