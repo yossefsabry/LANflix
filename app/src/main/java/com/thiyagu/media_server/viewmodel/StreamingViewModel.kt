@@ -95,23 +95,47 @@ class StreamingViewModel(
     fun toggleSubfolderScanning(enabled: Boolean) {
         viewModelScope.launch {
             userPreferences.saveSubfolderScanning(enabled)
+            
+            // Auto-restart server if running
+            val wasRunning = serverState.value is ServerState.Running
+            if (wasRunning) {
+                savedFolderUri.value?.let { uriString ->
+                    val uri = Uri.parse(uriString)
+                    serverManager.stopServer()
+                    // Small delay to ensure clean shutdown
+                    kotlinx.coroutines.delay(500)
+                    serverManager.startServer(uri)
+                }
+            }
+            
             // Trigger rescan if we have a folder selected
             savedFolderUri.value?.let { uriString ->
-                 rescanLibrary(Uri.parse(uriString))
+                 rescanLibrary(Uri.parse(uriString), restartServer = false) // Don't restart again
             }
         }
     }
     
-    fun rescanLibrary(folderUri: Uri) {
+    fun rescanLibrary(folderUri: Uri, restartServer: Boolean = true) {
         viewModelScope.launch {
             userPreferences.saveSelectedFolder(folderUri.toString())
             val includeSubfolders = userPreferences.subfolderScanningFlow.first()
             
+            // Auto-restart server if running and folder changed
+            val wasRunning = serverState.value is ServerState.Running
+            if (wasRunning && restartServer) {
+                serverManager.stopServer()
+                // Small delay to ensure clean shutdown
+                kotlinx.coroutines.delay(500)
+                serverManager.startServer(folderUri)
+            }
+            
             // 1. Sync Database
             mediaRepository.scanAndSync(folderUri, includeSubfolders)
             
-            // 2. Refresh Running Server Cache
-            serverManager.refreshCache()
+            // 2. Refresh Running Server Cache (if not restarted)
+            if (!wasRunning || !restartServer) {
+                serverManager.refreshCache()
+            }
         }
     }
 
