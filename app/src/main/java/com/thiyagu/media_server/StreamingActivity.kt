@@ -103,7 +103,7 @@ class StreamingActivity : AppCompatActivity() {
             viewModel.scanStatus.collect { status ->
                 if (status.isScanning) {
                     binding.progressScanning.visibility = View.VISIBLE
-                    binding.tvStatLibrary.text = "${status.count} Videos"
+                    binding.tvStatLibrary.text = "Indexing: ${status.count} found"
                 } else {
                     binding.progressScanning.visibility = View.GONE
                     // Revert to DB count (or ensure it's up to date)

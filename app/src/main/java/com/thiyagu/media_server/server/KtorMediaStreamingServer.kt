@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
@@ -53,18 +55,20 @@ class KtorMediaStreamingServer(
     // Metadata Cache Manager for fast video list retrieval
     internal val cacheManager = com.thiyagu.media_server.cache.MetadataCacheManager(appContext, treeUri)
     
+    // structured concurrency scope
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
     // Optimized Caches for O(1) Access and Thread Safety
     // filename -> DocumentFile
     internal val cachedFilesMap = ConcurrentHashMap<String, DocumentFile>()
     // Ordered list for pagination
     internal val allVideoFiles = java.util.Collections.synchronizedList(java.util.ArrayList<DocumentFile>())
     
-    // Scanning State
-    internal val isScanning = AtomicBoolean(false)
-    internal val scannedCount = AtomicInteger(0)
-    
-    // structured concurrency scope
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // Scanning State - Delegates to MetadataCacheManager
+    // We map the MetadataCacheManager.ScanStatus to the local type to maintain compatibility
+    val scanStatus: kotlinx.coroutines.flow.StateFlow<ScanStatus> = cacheManager.scanStatus.map { status ->
+        ScanStatus(status.isScanning, status.count)
+    }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, ScanStatus(false, 0))
     
     // Cache for directory listings (Tree Mode) - Key: Directory Uri String
     internal val directoryCache = java.util.concurrent.ConcurrentHashMap<String, CachedDirectory>()
@@ -73,8 +77,6 @@ class KtorMediaStreamingServer(
     @Volatile private var flatCacheTimestamp: Long = 0L
 
     data class ScanStatus(val isScanning: Boolean, val count: Int)
-    private val _scanStatus = kotlinx.coroutines.flow.MutableStateFlow(ScanStatus(false, 0))
-    val scanStatus = _scanStatus.asStateFlow()
 
     internal data class CachedFile(
         val uri: Uri, 
@@ -206,100 +208,12 @@ class KtorMediaStreamingServer(
      * The scanning happens asynchronously in the background.
      */
     internal fun refreshCache() {
-        val dir = DocumentFile.fromTreeUri(appContext, treeUri) ?: return
-        
         scope.launch(Dispatchers.IO) {
-            try {
-                val includeSubfolders = com.thiyagu.media_server.data.UserPreferences(appContext).subfolderScanningFlow.first()
-                
-                isScanning.set(true)
-                _scanStatus.value = ScanStatus(true, scannedCount.get())
-                
-                flatCacheTimestamp = System.currentTimeMillis()
-                
-                val foundFiles = java.util.concurrent.ConcurrentHashMap<String, DocumentFile>()
-                val existingKeys = cachedFilesMap.keys.toMutableSet()
-                
-                if (includeSubfolders) {
-                    scanRecursivelyMarkSweep(dir, foundFiles)
-                } else {
-                    val files = dir.listFiles().filter { it.isFile && it.name?.substringAfterLast('.', "")?.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") }
-                    files.forEach { file ->
-                        file.name?.let { name ->
-                            foundFiles[name] = file
-                        }
-                    }
-                }
-                
-                // Update Main Map
-                foundFiles.forEach { (name, file) ->
-                    cachedFilesMap[name] = file
-                }
-                
-                // Sweep (Remove deleted)
-                val keysToRemove = existingKeys - foundFiles.keys
-                keysToRemove.forEach { cachedFilesMap.remove(it) }
-                
-                // Rebuild List (Thread-Safe Snapshot)
-                allVideoFiles.clear()
-                allVideoFiles.addAll(foundFiles.values)
-                scannedCount.set(allVideoFiles.size)
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                isScanning.set(false)
-                _scanStatus.value = ScanStatus(false, scannedCount.get())
-            }
+            cacheManager.buildCache()
         }
-        // Returns immediately - scan continues in background!
     }
     
-    private suspend fun scanRecursivelyMarkSweep(root: DocumentFile, foundaccumulator: java.util.concurrent.ConcurrentHashMap<String, DocumentFile>) {
-        val stack = java.util.ArrayDeque<DocumentFile>()
-        stack.push(root)
-        var count = 0
-
-        while (stack.isNotEmpty()) {
-             if (!kotlinx.coroutines.currentCoroutineContext().isActive) break
-             val current = stack.pop()
-             val children = current.listFiles()
-             
-             for (child in children) {
-                 if (child.isDirectory) {
-                     stack.push(child)
-                 } else {
-                     if (child.name?.substringAfterLast('.', "")?.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") && child.length() > 0) {
-                          child.name?.let { name ->
-                              // If it's a new find, we add it. 
-                              // Optimization: If we want "Live Append", we should add to `allVideoFiles` immediately if it's new.
-                              // But we need to handle duplicates if we didn't clear `allVideoFiles`.
-                              // Hybrid: `foundaccumulator` tracks for Sweep. 
-                              // But we also check `cachedFilesMap`.
-                              
-                              foundaccumulator[name] = child
-                              
-                              if (!cachedFilesMap.containsKey(name)) {
-                                  // NEW FILE DISCOVERED!
-                                  cachedFilesMap[name] = child
-                                  allVideoFiles.add(child) // Add to live list immediately
-                              }
-                              
-                              count++
-                              // OPTIMIZATION: Update every 5 files instead of 20 for faster client feedback
-                              if (count % 5 == 0) {
-                                  scannedCount.set(foundaccumulator.size)
-                                  _scanStatus.value = ScanStatus(true, foundaccumulator.size)
-                                  // Yield to allow API requests to be processed
-                                  kotlinx.coroutines.yield()
-                              }
-                          }
-                     }
-                 }
-             }
-        }
-        scannedCount.set(foundaccumulator.size)
-    }
+    // Legacy scanning code removed in favor of MetadataCacheManager
     
 
 
@@ -323,7 +237,7 @@ class KtorMediaStreamingServer(
         }
         
         // If scanning is already in progress, don't restart
-        if (isScanning.get()) return
+        if (scanStatus.value.isScanning) return
         
         refreshCache()
     }

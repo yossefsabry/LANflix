@@ -60,8 +60,9 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     
     // API for Scan Status (Enhanced with progress tracking)
     get("/api/status") {
-        val currentCount = server.scannedCount.get()
-        val scanning = server.isScanning.get()
+        val statusState = server.scanStatus.value
+        val currentCount = statusState.count
+        val scanning = statusState.isScanning
         
         // Estimate progress (rough approximation based on typical folder structures)
         // For better accuracy, we'd need to count directories first, but that defeats the purpose
@@ -157,7 +158,7 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
         
         // OPTIMIZATION: Always trigger scan if cache is empty and not already scanning
         // This ensures we start discovering videos immediately on first request
-        if (server.allVideoFiles.isEmpty() && !server.isScanning.get()) {
+        if (server.allVideoFiles.isEmpty() && !server.scanStatus.value.isScanning) {
             server.refreshCache() // Returns immediately, scan runs in background
         }
         
@@ -179,7 +180,7 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
             """{"name":"${name.replace("\"", "\\\"")}","size":$fileSize}"""
         }
         
-        val json = """{"videos":[$videosJson],"page":$page,"totalVideos":$totalVideos,"hasMore":${offset + limit < totalVideos},"scanning":${server.isScanning.get()}}"""
+        val json = """{"videos":[$videosJson],"page":$page,"totalVideos":$totalVideos,"hasMore":${offset + limit < totalVideos},"scanning":${server.scanStatus.value.isScanning}}"""
         
         call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
     }
@@ -187,7 +188,6 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     get("/") {
         val mode = call.request.queryParameters["mode"]
         val pathParam = call.request.queryParameters["path"] ?: ""
-        val pageParam = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
         val themeParam = call.request.queryParameters["theme"] ?: "dark"
 
         
@@ -197,11 +197,8 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
             val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(this, Charsets.UTF_8))
             with(HtmlTemplates) {
                 writer.respondHtmlPage(
-                    appContext = server.appContext,
-                    treeUri = server.treeUri,
                     mode = mode,
                     pathParam = pathParam,
-                    pageParam = pageParam,
                     themeParam = themeParam,
                     visibilityManager = visibilityManager,
                     allVideoFiles = synchronized(server.allVideoFiles) { server.allVideoFiles.toList() }

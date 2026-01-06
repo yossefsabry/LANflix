@@ -12,16 +12,12 @@ import java.net.URLEncoder
 
 object HtmlTemplates {
     suspend fun Writer.respondHtmlPage(
-        appContext: Context,
-        treeUri: Uri,
         mode: String?,
         pathParam: String,
-        pageParam: Int,
         themeParam: String,
         visibilityManager: VideoVisibilityManager,
         allVideoFiles: List<DocumentFile>
     ) {
-        val limit = 20
         
         // --- HTML HEAD ---
         write("""
@@ -329,7 +325,7 @@ object HtmlTemplates {
                 }
 
                 // Breadcrumbs
-                write("""<div class="flex items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap px-1">""")
+                write("""<div id="breadcrumbs" class="flex items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap px-1">""")
                 breadcrumbs.forEachIndexed { index, (name, path) ->
                     if (index > 0) write("""<span class="text-text-sub">/</span>""")
                     val isLast = index == breadcrumbs.size - 1
@@ -387,11 +383,11 @@ object HtmlTemplates {
                     </button>
                 </div>
                 <section>
-                    <div class="flex items-center justify-between mb-4">
-                         <h2 class="text-lg font-bold">Recently Added</h2>
-                         <button onclick="document.getElementById('all-videos').scrollIntoView({behavior: 'smooth'})" class="text-xs font-bold text-primary">See All</button>
-                    </div>
-                    <div class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">""")
+                     <div class="flex items-center justify-between mb-4">
+                          <h2 class="text-lg font-bold">Recently Added</h2>
+                          <button onclick="document.getElementById('all-videos').scrollIntoView({behavior: 'smooth'})" class="text-xs font-bold text-primary">See All</button>
+                     </div>
+                     <div id="recently-added-grid" class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">""")
                 
                 for (file in recentFiles) {
                     val name = file.name ?: "Unknown"
@@ -467,6 +463,7 @@ object HtmlTemplates {
                             path: '',
                             page: 1,
                             items: [],
+                            allVideos: [], // Full Cached List
                             isLoading: false,
                             hasMore: true,
                             virtualScroll: false
@@ -505,6 +502,13 @@ object HtmlTemplates {
                                 } else {
                                     os.put({ path: key, items: data, timestamp: Date.now() });
                                 }
+                            },
+                            async saveVideos(videos) {
+                                await this.set('all_videos', videos, 'tree_items');
+                            },
+                            async loadAllVideos() {
+                                const res = await this.get('all_videos', 'tree_items');
+                                return res ? res.items : null;
                             }
                         },
 
@@ -620,95 +624,180 @@ object HtmlTemplates {
                             if (this.state.hasMore) this.loadPage();
                         },
 
+                        /**
+                         * Generates folder items from the flat cached list.
+                         * Filters allVideos for items starting with current path.
+                         */
+                        generateTree(path) {
+                            if (!this.state.allVideos || this.state.allVideos.length === 0) return [];
+                            
+                            const items = [];
+                            const folders = new Set();
+                            
+                            // Normalize path (remove leading/trailing slashes)
+                            const targetPath = path ? path.replace(/^\/|\/$/g, '') : '';
+                            const depth = targetPath ? targetPath.split('/').length : 0;
+                            
+                            this.state.allVideos.forEach(video => {
+                                // video.path is e.g. "Movies/Action/DieHard.mp4"
+                                const relativePath = video.path;
+                                
+                                // Optimization: Skip if not relevant
+                                if (targetPath && !relativePath.startsWith(targetPath + '/')) return;
+                                
+                                const parts = relativePath.split('/');
+                                
+                                // Check if we are at the right depth
+                                // parts for file "A/B.mp4" (depth 0) is ["A", "B.mp4"] -> part[0] is A (folder)
+                                // If targetPath="", depth=0. We look at parts[0].
+                                
+                                // Safety check for malformed paths
+                                if (parts.length <= depth) return;
+                                
+                                const segment = parts[depth];
+                                
+                                if (parts.length === depth + 1) {
+                                    // It is a file in the current directory
+                                    items.push({
+                                        name: video.name,
+                                        type: 'file',
+                                        size: video.size,
+                                        path: video.path,
+                                        lastModified: video.lastModified
+                                    });
+                                } else {
+                                    // It is a folder
+                                    if (!folders.has(segment)) {
+                                        folders.add(segment);
+                                        items.push({
+                                            name: segment,
+                                            type: 'dir',
+                                            size: 0
+                                        });
+                                    }
+                                }
+                            });
+                            
+                            // Sort: Folders first, then Files
+                            return items.sort((a, b) => {
+                                if (a.type === b.type) return a.name.localeCompare(b.name, undefined, {numeric: true});
+                                return a.type === 'dir' ? -1 : 1;
+                            });
+                        },
+
                         async loadPage() {
                             if (this.state.isLoading) return;
                             this.state.isLoading = true;
                             document.getElementById('loading-indicator').classList.remove('hidden');
 
                             try {
-                                // OPTIMIZATION: Use metadata cache for instant loading
-                                if (this.state.mode === 'flat' && this.state.page === 1) {
-                                    try {
-                                        const cacheRes = await fetch('/api/cache');
-                                        const cacheData = await cacheRes.json();
+                                // 1. Ensure we have the full video list (Memory or IDB or Network)
+                                if (this.state.allVideos.length === 0) {
+                                    // Try IDB first
+                                    const cachedList = await this.cache.loadAllVideos();
+                                    if (cachedList && cachedList.length > 0) {
+                                        this.state.allVideos = cachedList;
+                                    } else {
+                                        // Fetch from API
+                                        // Try /api/cache first (Fastest)
+                                        try {
+                                            const res = await fetch('/api/cache');
+                                            if (res.ok) {
+                                                const data = await res.json();
+                                                if (data.videos) {
+                                                    this.state.allVideos = data.videos;
+                                                    this.cache.saveVideos(data.videos); // Async save
+                                                    
+                                                    // Also update scanning status if available in data? 
+                                                    // No, CacheData format usually just has videos.
+                                                }
+                                            }
+                                        } catch (e) { console.warn('Cache API failed'); }
                                         
-                                        if (cacheData.videos && cacheData.videos.length > 0) {
-                                            // Display all videos from cache immediately
-                                            this.renderItems(cacheData.videos, 'flat', true);
-                                            this.updateVideoCount(cacheData.totalVideos, false);
-                                            
-                                            // Save to IndexedDB for offline access
-                                            await this.cache.saveVideos(cacheData.videos);
-                                            
-                                            this.state.hasMore = false; // All loaded from cache
-                                            this.state.isLoading = false;
-                                            document.getElementById('loading-indicator').classList.add('hidden');
-                                            return;
+                                        // If still empty, fall back to /api/videos (Progressive)
+                                        if (this.state.allVideos.length === 0) {
+                                             const res = await fetch('/api/videos?page=1'); // Just get first page to start
+                                             const data = await res.json();
+                                             // Note: /api/videos only returns paginated list.
+                                             // So we can't fully support Tree View until full scan completes/cache loads.
+                                             // But we can support Flat View.
                                         }
-                                    } catch (cacheError) {
-                                        console.warn('Cache fetch failed, falling back to paginated API:', cacheError);
-                                        // Fall through to normal pagination
                                     }
                                 }
-                                
-                                // Fallback: Normal paginated loading (for tree mode or if cache fails)
-                                const url = this.state.mode === 'tree' 
-                                    ? `/api/tree?path=${'$'}{encodeURIComponent(this.state.path)}&page=${'$'}{this.state.page}`
-                                    : `/api/videos?page=${'$'}{this.state.page}`;
 
-                                const res = await fetch(url);
-                                const data = await res.json();
-                                
-                                const items = this.state.mode === 'tree' ? data.items : data.videos;
-                                const hasMore = data.hasMore;
-                                const scanning = data.scanning; // Capture scanning status
-                                
-                                this.state.hasMore = hasMore;
-
-                                // Update Counts
-                                const countEl = document.getElementById('video-count');
-                                if (countEl) {
-                                     const total = this.state.mode === 'tree' ? data.totalItems : data.totalVideos;
-                                     const label = this.state.mode === 'tree' ? 'Items' : 'Videos';
-                                     let text = `${'$'}{total || 0} ${'$'}{label}`;
-                                     if (scanning) text += " (Scanning...)";
-                                     countEl.textContent = text;
-                                }
-
-                                if (items.length > 0) {
-                                    // Cache Upgrade: Live Append
-                                    if (this.state.mode === 'flat') {
-                                        this.cache.set(null, items, 'items');
-                                    } else if (this.state.page === 1) {
-                                         // For tree, currently only caching page 1 for speed
-                                         this.cache.set(this.state.path, items, 'tree_items');
-                                    }
-
-                                    this.renderItems(items, this.state.mode, true);
+                                // 2. Render based on Mode using Local Data
+                                if (this.state.mode === 'tree') {
+                                    // PURE CLIENT-SIDE TREE
+                                    const items = this.generateTree(this.state.path);
+                                    this.renderItems(items, 'tree', true);
                                     
-                                    // Only increment page if we are done with this page (full page)
-                                    // OR if we are not scanning. 
-                                    // If scanning and partial page, we stay on this page to pick up new items on next poll.
-                                    if (!scanning || items.length >= 20) {
-                                        this.state.page++;
+                                    // Update Header Breadcrumbs
+                                    this.updateBreadcrumbs(this.state.path);
+                                    
+                                    // Update Count
+                                    const countEl = document.getElementById('video-count');
+                                    // This element is inside #video-section usually, tree has no count display by default in UI?
+                                    // Wait, tree-section has no count header in HTML.
+                                    
+                                    this.state.isLoading = false;
+                                    document.getElementById('loading-indicator').classList.add('hidden');
+                                    
+                                } else {
+                                    // FLAT LIST (Client-Filtered or Server-Paginated?)
+                                    // Optimized: Use Client-Side list if we have it!
+                                    if (this.state.allVideos.length > 0) {
+                                        const offset = (this.state.page - 1) * 20;
+                                        const limit = 20;
+                                        
+                                        // Filter hidden? (Visibilty manager is server-side usually)
+                                        // For now assume client has all valid videos.
+                                        
+                                        const slice = this.state.allVideos.slice(offset, offset + limit);
+                                        this.renderItems(slice, 'flat', true);
+                                        
+                                        this.updateVideoCount(this.state.allVideos.length, false);
+                                        
+                                        if (offset + limit >= this.state.allVideos.length) {
+                                            this.state.hasMore = false;
+                                        } else {
+                                            this.state.hasMore = true;
+                                            this.state.page++;
+                                        }
+                                        
+                                        // Update Recently Added (Client Logic)
+                                        if (this.state.page === 2) { // Logic: only render recents on first load (page incremented to 2)
+                                             this.renderRecentlyAdded();
+                                        }
+                                        
+                                        this.state.isLoading = false;
+                                        document.getElementById('loading-indicator').classList.add('hidden');
+                                        
+                                    } else {
+                                        // Legacy / Fallback Server Pagination
+                                        const url = `/api/videos?page=${'$'}{this.state.page}`;
+                                        const res = await fetch(url);
+                                        const data = await res.json();
+                                        
+                                        this.updateVideoCount(data.totalVideos, data.scanning);
+                                        this.renderItems(data.videos, 'flat', true);
+                                        
+                                        this.state.hasMore = data.hasMore;
+                                        if (data.hasMore) this.state.page++;
+                                        
+                                        if (data.scanning) setTimeout(() => this.loadPage(), 1000);
+                                        
+                                        this.state.isLoading = false;
+                                        document.getElementById('loading-indicator').classList.add('hidden');
                                     }
                                 }
                                 
-                                // OPTIMIZATION: Poll faster during scanning for quicker updates
-                                if (scanning) {
-                                    setTimeout(() => this.loadPage(), 500);
-                                }
+                                // 3. Background Poll for Updates (Scanning)
+                                this.startPolling();
                                 
                             } catch (e) {
-                                console.error(e);
-                            } finally {
+                                console.error('Load Error:', e);
                                 this.state.isLoading = false;
                                 document.getElementById('loading-indicator').classList.add('hidden');
-                                
-                                // Infinite Scroll Check
-                                if (this.state.hasMore && !this.state.isLoading) {
-                                    // Observe sentinel again? Sentinel handles it.
-                                }
                             }
                         },
 
@@ -800,6 +889,98 @@ object HtmlTemplates {
                              document.getElementById('nav-tree').classList.toggle('text-black', mode === 'tree');
                              document.getElementById('nav-tree').classList.toggle('bg-surface-light', mode !== 'tree');
                              document.getElementById('nav-home').classList.toggle('text-primary', mode !== 'tree');
+                        },
+
+                        updateVideoCount(total, scanning) {
+                            const countEl = document.getElementById('video-count');
+                            if (!countEl) return;
+                            let text = (total || 0).toString();
+                            text += this.state.mode === 'tree' ? ' Items' : ' Videos';
+                            if (scanning) text += " (Scanning...)";
+                            countEl.textContent = text;
+                        },
+
+                        updateBreadcrumbs(path) {
+                            const container = document.getElementById('breadcrumbs');
+                            if (!container) return;
+                            
+                            container.innerHTML = '';
+                            
+                            // Always add Home
+                            const homeLink = document.createElement('a');
+                            homeLink.href = '/?mode=tree';
+                            homeLink.className = (path) ? "text-text-sub hover:text-text-main text-sm" : "text-primary font-bold text-sm";
+                            homeLink.textContent = "Home";
+                            container.appendChild(homeLink);
+                            
+                            if (!path) return;
+                            
+                            // Separator and Parts
+                            const parts = path.split('/').filter(p => p);
+                            let currentPath = "";
+                            
+                            parts.forEach((part, index) => {
+                                // Add Separator
+                                const sep = document.createElement('span');
+                                sep.className = "text-text-sub";
+                                sep.textContent = "/";
+                                container.appendChild(sep);
+                                
+                                currentPath += (currentPath ? "/" : "") + part;
+                                
+                                const link = document.createElement('a');
+                                const isLast = index === parts.length - 1;
+                                link.href = `/?mode=tree&path=${'$'}{encodeURIComponent(currentPath)}`;
+                                link.className = isLast ? "text-primary font-bold text-sm" : "text-text-sub hover:text-text-main text-sm";
+                                link.textContent = part;
+                                container.appendChild(link);
+                            });
+                        },
+                        
+                        renderRecentlyAdded() {
+                            const container = document.getElementById('recently-added-grid');
+                            if (!container) return;
+                            
+                            // Get top 4 recent
+                            if (!this.state.allVideos || this.state.allVideos.length === 0) return;
+                            
+                            const recents = [...this.state.allVideos]
+                                .sort((a, b) => b.lastModified - a.lastModified)
+                                .slice(0, 4);
+                                
+                            if (recents.length === 0) {
+                                container.innerHTML = '<div class="w-full text-center py-8 text-text-sub text-sm">No recent videos</div>';
+                                return;
+                            }
+                            
+                            container.innerHTML = '';
+                            
+                            recents.forEach(video => {
+                                const name = video.name;
+                                const size = Math.round(video.size || 0);
+                                const el = document.createElement('a');
+                                el.href = `/${'$'}{name}`;
+                                el.className = "flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5";
+                                el.innerHTML = `
+                                    <img data-src="/api/thumbnail/${'$'}{encodeURIComponent(name)}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
+                                    <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-white text-3xl">play_arrow</span></div>
+                                    </div>
+                                    <div class="absolute inset-0 flex items-center justify-center bg-white/5 -z-10"><span class="material-symbols-rounded text-4xl text-text-sub/20">movie</span></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                                    <div class="absolute bottom-3 left-3 right-3">
+                                        <h3 class="font-bold text-sm text-white line-clamp-1 mb-1">${'$'}{name}</h3>
+                                        <div class="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
+                                            <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded">NEW</span>
+                                            <span>${'$'}{size} MB</span>
+                                        </div>
+                                    </div>
+                                `;
+                                container.appendChild(el);
+                            });
+                            
+                            // Re-observe images for recents
+                            this.observeImages();
                         },
 
                         startPolling() {

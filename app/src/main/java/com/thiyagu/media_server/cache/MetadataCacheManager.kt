@@ -12,6 +12,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 /**
@@ -25,6 +27,10 @@ class MetadataCacheManager(
     private val treeUri: Uri
 ) {
     private val gson = Gson()
+    
+    data class ScanStatus(val isScanning: Boolean, val count: Int)
+    private val _scanStatus = MutableStateFlow(ScanStatus(false, 0))
+    val scanStatus = _scanStatus.asStateFlow()
     
     // Cache file stored in app's cache directory
     private val cacheFile: File
@@ -76,9 +82,12 @@ class MetadataCacheManager(
         val rootDir = DocumentFile.fromTreeUri(context, treeUri)
         
         if (rootDir != null && rootDir.exists()) {
+            _scanStatus.value = ScanStatus(true, 0)
             // Scan recursively
             scanRecursively(rootDir, "", videos)
         }
+        
+        _scanStatus.value = ScanStatus(false, videos.size)
         
         val cacheData = CacheData(
             timestamp = System.currentTimeMillis(),
@@ -122,6 +131,10 @@ class MetadataCacheManager(
                                       else "$relativePath/${file.name}"
                             )
                         )
+                        // Emit progress every 10 items to reduce overhead
+                        if (accumulator.size % 10 == 0) {
+                            _scanStatus.value = ScanStatus(true, accumulator.size)
+                        }
                     }
                 }
             }
@@ -133,10 +146,19 @@ class MetadataCacheManager(
     /**
      * Save cache data to JSON file
      */
+    /**
+     * Save cache data to JSON file atomically
+     */
     private fun saveCache(data: CacheData) {
         try {
             val json = gson.toJson(data)
-            cacheFile.writeText(json)
+            // Atomic write: Write to temp file then rename
+            val tempFile = File(cacheFile.parent, cacheFile.name + ".tmp")
+            tempFile.writeText(json)
+            if (cacheFile.exists()) {
+                cacheFile.delete()
+            }
+            tempFile.renameTo(cacheFile)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -180,11 +202,17 @@ class MetadataCacheManager(
      * Refresh cache if it's stale or doesn't exist
      */
     suspend fun refreshIfNeeded(): CacheData {
-        return if (isCacheValid()) {
-            loadCache()!!
-        } else {
-            buildCache()
+        val cached = loadCache()
+        if (cached != null) {
+            // Check consistency inline to avoid double read
+            if (cached.folderUri == treeUri.toString()) {
+                val age = System.currentTimeMillis() - cached.timestamp
+                if (age < 24 * 60 * 60 * 1000L) {
+                    return cached
+                }
+            }
         }
+        return buildCache()
     }
     
     /**
