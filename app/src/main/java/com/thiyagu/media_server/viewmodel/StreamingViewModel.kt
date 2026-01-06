@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -45,6 +47,22 @@ class StreamingViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = 0
+        )
+
+    // Live Scanning Status
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val scanStatus = serverState // serverState is already a separate StateFlow
+        .flatMapLatest { state ->
+             if (state is ServerState.Running) {
+                 state.scanStatusFlow
+             } else {
+                 kotlinx.coroutines.flow.flowOf(com.thiyagu.media_server.server.KtorMediaStreamingServer.ScanStatus(false, 0))
+             }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = com.thiyagu.media_server.server.KtorMediaStreamingServer.ScanStatus(false, 0)
         )
 
     // Uptime Logic

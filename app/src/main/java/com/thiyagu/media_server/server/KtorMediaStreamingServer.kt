@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.plugins.compression.*
+import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.netty.*
 import io.ktor.server.engine.*
 import io.ktor.server.plugins.autohead.*
@@ -20,6 +22,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.currentCoroutineContext
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
@@ -63,6 +69,10 @@ class KtorMediaStreamingServer(
     private val CACHE_DURATION_MS = 60_000L // 60 seconds
     @Volatile private var flatCacheTimestamp: Long = 0L
 
+    data class ScanStatus(val isScanning: Boolean, val count: Int)
+    private val _scanStatus = kotlinx.coroutines.flow.MutableStateFlow(ScanStatus(false, 0))
+    val scanStatus = _scanStatus.asStateFlow()
+
     private data class CachedDirectory(
         val files: List<DocumentFile>,
         val timestamp: Long
@@ -88,6 +98,12 @@ class KtorMediaStreamingServer(
                     install(PartialContent)
                     install(AutoHeadResponse)
                     
+                    install(io.ktor.server.plugins.compression.Compression) {
+                        gzip { priority = 1.0 }
+                        deflate { priority = 10.0; minimumSize(1024) }
+                    }
+                    install(io.ktor.server.plugins.cachingheaders.CachingHeaders)
+                    
                     routing {
                         // API to force refresh cache
                         get("/api/refresh") {
@@ -102,6 +118,66 @@ class KtorMediaStreamingServer(
                             call.respondText(status, ContentType.Application.Json, HttpStatusCode.OK)
                         }
                         
+                        // API for paginated directory listing (Tree Mode)
+                        get("/api/tree") {
+                            val pathParam = call.request.queryParameters["path"] ?: ""
+                            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                            val limit = 20
+                            val offset = (page - 1) * limit
+                            
+                            val visibilityManager = com.thiyagu.media_server.utils.VideoVisibilityManager(appContext)
+                            
+                            try {
+                                val rootDir = DocumentFile.fromTreeUri(appContext, treeUri)
+                                if (rootDir != null) {
+                                    var currentDir = rootDir
+                                    
+                                    // Navigate to target directory
+                                    if (pathParam.isNotEmpty()) {
+                                        val parts = pathParam.split("/").filter { it.isNotEmpty() }
+                                        for (part in parts) {
+                                            val items = getDirectoryListing(currentDir!!)
+                                            val nextDir = items.find { it.isDirectory && it.name == part }
+                                            if (nextDir != null) {
+                                                currentDir = nextDir
+                                            } else {
+                                                // Path not found
+                                                call.respondText("""{"items":[],"page":$page,"hasMore":false}""", ContentType.Application.Json, HttpStatusCode.OK)
+                                                return@get
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Get Items
+                                    val allItems = getDirectoryListing(currentDir!!)
+                                        .filter { !it.name!!.startsWith(".") }
+                                        .sortedWith(compareBy({ !it.isDirectory }, { it.name }))
+                                    
+                                    val totalItems = allItems.size
+                                    val paginatedItems = allItems.drop(offset).take(limit)
+                                    
+                                    val itemsJson = paginatedItems.mapNotNull { item ->
+                                        val name = item.name ?: return@mapNotNull null
+                                        val isDir = item.isDirectory
+                                        if (!isDir && !name.substringAfterLast('.', "").lowercase().let { it in setOf("mp4", "mkv", "avi", "mov", "webm") }) return@mapNotNull null
+                                        if (!isDir && visibilityManager.isVideoHidden(item.uri.toString())) return@mapNotNull null
+                                        
+                                        val size = if (isDir) 0 else item.length() / (1024 * 1024)
+                                        val type = if (isDir) "dir" else "file"
+                                        """{"name":"${name.replace("\"", "\\\"")}","type":"$type","size":$size}"""
+                                    }.joinToString(",")
+                                    
+                                    val json = """{"items":[$itemsJson],"page":$page,"totalItems":$totalItems,"hasMore":${offset + limit < totalItems}}"""
+                                    call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
+                                } else {
+                                    call.respond(HttpStatusCode.InternalServerError, "Root dir invalid")
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                call.respond(HttpStatusCode.InternalServerError, e.localizedMessage ?: "Error")
+                            }
+                        }
+
                         // API for paginated video loading
                         get("/api/videos") {
                             val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
@@ -188,6 +264,9 @@ class KtorMediaStreamingServer(
         };
     </script>
     <style>
+        :root {
+            --color-primary: ${if (themeParam == "dark") "#FAC638" else "#D4A526"};
+        }
         body { 
             font-family: 'Spline Sans', sans-serif; 
             -webkit-tap-highlight-color: transparent; 
@@ -197,41 +276,145 @@ class KtorMediaStreamingServer(
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .progress-bar-container {
              position: fixed;
-             top: 60px; /* Below header */
+             top: 0;
              left: 0;
              right: 0;
-             z-index: 40;
+             height: 5px;
+             z-index: 100;
              pointer-events: none;
              transition: transform 0.3s ease;
              transform: translateY(-100%);
+             background: rgba(255,255,255,0.1);
+             overflow: hidden;
         }
         .progress-bar-container.visible {
             transform: translateY(0);
         }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--color-primary, #D4A526); /* Fallback */
+            width: 30%;
+            animation: indeterminate 2s infinite linear;
+        }
+        @keyframes indeterminate {
+            0% { transform: translateX(-100%); width: 30%; }
+            50% { width: 60%; }
+            100% { transform: translateX(200%); width: 30%; }
+        }
+        @keyframes wobble {
+            0% { transform: translateX(0%); }
+            15% { transform: translateX(-25%) rotate(-5deg); }
+            30% { transform: translateX(20%) rotate(3deg); }
+            45% { transform: translateX(-15%) rotate(-3deg); }
+            60% { transform: translateX(10%) rotate(2deg); }
+            75% { transform: translateX(-5%) rotate(-1deg); }
+            100% { transform: translateX(0%); }
+        }
+        
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #ffffff05 25%, #ffffff10 50%, #ffffff05 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 12px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Responsive Grid */
+        .auto-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+
+        /* View Transitions */
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation-duration: 0.3s;
+        }
     </style>
-    <script>
-        // Persistence Logic
+        // Theme & Persistence Logic
         (function() {
-            const params = new URLSearchParams(window.location.search);
-            const mode = params.get('mode');
-            const path = params.get('path');
+            // Check LocalStorage for theme preference
+            const savedTheme = localStorage.getItem('lanflix_theme');
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlTheme = urlParams.get('theme');
+            const mode = urlParams.get('mode');
+            const path = urlParams.get('path');
             
+            // If URL has no theme but we have a saved one, redirect to apply it (Server-Side Rendering needs it)
+            // Or better: Apply it via JS immediately to body class, but SSR color variables might be wrong.
+            // Since we rely on server-injected colors, we MUST reload/redirect if the server rendered the wrong theme.
+            // But to avoid loops, only redirect if they differ.
+            
+            let targetTheme = urlTheme || savedTheme || 'dark'; // Default to dark
+            
+            // Save initial state
+            if (urlTheme) localStorage.setItem('lanflix_theme', urlTheme);
             if (mode) localStorage.setItem('lanflix_last_mode', mode);
             if (mode === 'tree' && path !== null) localStorage.setItem('lanflix_last_path', path);
+            
+            // Redirect if needed
+            if (!urlTheme && savedTheme) {
+                 // Build new URL
+                 urlParams.set('theme', savedTheme);
+                 window.location.replace('?' + urlParams.toString());
+            }
 
-            // Restore State (Simplified)
+            // Restore State for Root Visit
             if (!window.location.search) {
                 const lastMode = localStorage.getItem('lanflix_last_mode');
                 if (lastMode === 'tree') {
                    const lastPath = localStorage.getItem('lanflix_last_path');
-                   window.location.replace('/?mode=tree' + (lastPath ? '&path=' + encodeURIComponent(lastPath) : ''));
+                   window.location.replace('/?mode=tree&theme=' + targetTheme + (lastPath ? '&path=' + encodeURIComponent(lastPath) : ''));
+                } else {
+                   window.location.replace('/?theme=' + targetTheme);
                 }
-            } else if (mode === 'tree' && path === null) {
-                const lastPath = localStorage.getItem('lanflix_last_path');
-                if (lastPath) window.location.replace('/?mode=tree&path=' + encodeURIComponent(lastPath));
             }
         })();
+
+        function toggleTheme() {
+            const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('lanflix_theme', next);
+            
+            // Reload with new theme param
+            const url = new URL(window.location);
+            url.searchParams.set('theme', next);
+            window.location.href = url.toString();
+        }
     </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW Registration failed:', err));
+            });
+        }
+    </script>
+    <style>
+        /* Disconnect Overlay */
+        #connection-lost {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #connection-lost.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
     <script>
         // Lazy load thumbnails
         if ('IntersectionObserver' in window) {
@@ -254,6 +437,20 @@ class KtorMediaStreamingServer(
 </head>
 <body class="bg-background text-text-main min-h-screen pb-24 selection:bg-primary selection:text-black">
     
+    <!-- Connection Lost Overlay -->
+    <div id="connection-lost">
+        <div class="bg-surface p-6 rounded-2xl flex flex-col items-center gap-4 text-center border border-white/10 shadow-2xl max-w-xs mx-4">
+            <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <span class="material-symbols-rounded text-red-500 text-2xl">wifi_off</span>
+            </div>
+            <div>
+                <h3 class="font-bold text-lg text-text-main">Connection Lost</h3>
+                <p class="text-sm text-text-sub mt-1">Reconnecting to server...</p>
+            </div>
+            <div class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mt-2"></div>
+        </div>
+    </div>
+
     <!-- Sticky Header -->
     <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md px-4 py-3 border-b border-white/5">
         <div class="flex items-center justify-between">
@@ -264,22 +461,21 @@ class KtorMediaStreamingServer(
                 <span class="material-symbols-rounded text-primary text-2xl">play_circle</span>
                 <h1 class="text-xl font-bold tracking-tight">LANflix</h1>
             </div>
-            <a href="http://profile" class="w-10 h-10 rounded-full bg-surface-light border border-white/5 flex items-center justify-center active:scale-95 transition-transform relative">
-                 <span class="material-symbols-rounded text-text-sub">person</span>
-                 <div class="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background"></div>
-            </a>
+            <div class="flex gap-2">
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-surface-light border border-white/5 flex items-center justify-center active:scale-95 transition-transform text-text-sub">
+                    <span class="material-symbols-rounded">${if (themeParam == "dark") "light_mode" else "dark_mode"}</span>
+                </button>
+                <a href="http://profile" class="w-10 h-10 rounded-full bg-surface-light border border-white/5 flex items-center justify-center active:scale-95 transition-transform relative">
+                     <span class="material-symbols-rounded text-text-sub">person</span>
+                     <div class="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background"></div>
+                </a>
+            </div>
         </div>
     </header>
 
     <!-- Scanning Progress Bar -->
-    <div id="scanning-bar" class="progress-bar-container bg-primary/10 backdrop-blur-md border-b border-primary/20">
-        <div class="px-4 py-2 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                 <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                 <span class="text-xs font-medium text-primary">Scanning Media Library...</span>
-            </div>
-            <span id="scan-count" class="text-xs font-bold text-text-main">0 items</span>
-        </div>
+    <div id="scanning-bar" class="progress-bar-container">
+        <div class="progress-bar-fill bg-primary"></div>
     </div>
 
     <main class="px-4 py-4 space-y-6">
@@ -315,10 +511,11 @@ class KtorMediaStreamingServer(
                                             }
                                         }
 
-                                        if (currentDir == null || !currentDir.isDirectory) {
+                                        val dir = currentDir
+                                        if (dir == null || !dir.isDirectory) {
                                             writer.write("""<div class="w-full text-center py-20 text-text-sub">Directory not found</div>""")
                                         } else {
-                                            val allItems = getDirectoryListing(currentDir)
+                                            val allItems = getDirectoryListing(dir)
                                                 .filter { !it.name!!.startsWith(".") }
                                                 .sortedWith(compareBy({ !it.isDirectory }, { it.name }))
                                             
@@ -337,14 +534,14 @@ class KtorMediaStreamingServer(
                                             writer.write("""</div>""")
 
                                             // Grid
-                                            writer.write("""<div class="grid grid-cols-2 gap-4">""")
+                                            writer.write("""<div id="tree-grid" class="grid grid-cols-2 gap-4">""")
                                             
                                             for (item in pagedItems) {
                                                 val name = item.name ?: "Unknown"
                                                 if (item.isDirectory) {
                                                     val newPath = if (pathParam.isEmpty()) "/$name" else "$pathParam/$name"
                                                     writer.write("""
-                                                        <a href="/?mode=tree&path=$newPath" class="bg-surface-light rounded-xl p-4 flex flex-col items-center gap-2 border border-white/5 active:scale-95 transition-transform">
+                                                        <a href="/?mode=tree&path=${newPath.replace("\"", "&quot;")}" class="bg-surface-light rounded-xl p-4 flex flex-col items-center gap-2 border border-white/5 active:scale-95 transition-transform">
                                                             <span class="material-symbols-rounded text-4xl text-primary">folder</span>
                                                             <span class="text-xs text-center font-medium line-clamp-1 break-all">$name</span>
                                                         </a>
@@ -353,10 +550,12 @@ class KtorMediaStreamingServer(
                                                      if (name.endsWith(".mp4", true) || name.endsWith(".mkv", true) || name.endsWith(".avi", true) || name.endsWith(".webm", true)) {
                                                          if (!visibilityManager.isVideoHidden(item.uri.toString())) {
                                                              val fileSize = item.length() / (1024 * 1024)
+                                                             val itemPath = if (pathParam.isEmpty()) "/$name" else "$pathParam/$name"
+                                                             
                                                              writer.write("""
                                                                 <a href="/${name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
                                                                      <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
-                                                                         <img data-src="/api/thumbnail/${name}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
+                                                                         <img data-src="/api/thumbnail/${name}?path=${itemPath}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
                                                                          <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
                                                                              <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
                                                                          </div>
@@ -376,16 +575,15 @@ class KtorMediaStreamingServer(
                                             }
                                             writer.write("""</div>""")
                                             
-                                            // Pagination Controls
-                                            if (totalPages > 1) {
-                                                writer.write("""
-                                                    <div class="flex items-center justify-center gap-4 mt-8">
-                                                        ${if (pageParam > 1) """<a href="/?mode=tree&path=$pathParam&page=${pageParam-1}" class="px-4 py-2 bg-surface-light rounded-full text-sm font-medium hover:bg-white/10">Previous</a>""" else ""}
-                                                        <span class="text-xs text-text-sub">Page $pageParam of $totalPages</span>
-                                                        ${if (pageParam < totalPages) """<a href="/?mode=tree&path=$pathParam&page=${pageParam+1}" class="px-4 py-2 bg-primary text-black rounded-full text-sm font-medium shadow-lg hover:bg-primary/90">Next</a>""" else ""}
+                                            // Loading Indicators & Sentinel for Infinite Scroll
+                                            writer.write("""
+                                                <div id="loading-indicator" class="hidden col-span-full flex justify-center py-8">
+                                                    <div class="flex items-center gap-3 text-text-sub">
+                                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                                     </div>
-                                                """)
-                                            }
+                                                </div>
+                                                <div id="loading-sentinel"></div>
+                                            """)
                                         }
 
                                     } else {
@@ -448,7 +646,7 @@ class KtorMediaStreamingServer(
                                                  <h2 class="text-lg font-bold">All Videos</h2>
                                                  <span id="video-count" class="text-xs text-text-sub/60 font-medium">Loading...</span>
                                             </div>
-                                            <div id="video-grid" class="grid grid-cols-2 gap-4">
+                                            <div id="video-grid" class="auto-grid pb-8">
                                                 <!-- Skeleton loaders for immediate feedback -->
                                                 <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
                                                     <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
@@ -475,49 +673,78 @@ class KtorMediaStreamingServer(
                                             <div id="loading-sentinel"></div>
                                         </section>
                                         
-                                        <script>
-                                            let currentPage = 1;
+                                            // Configuration
+                                            const MODE = "${mode ?: "flat"}";
+                                            const PATH = "${pathParam.replace("\"", "\\\"")}";
+                                            let currentPage = ${if (mode == "tree") 1 else 1}; // Always start at 1 for JS load? No, SSR might load pg 1.
+                                            // Actually, if SSR loads Page 1, we should start lazy loading at Page 2.
+                                            // The original code had SSR load Page 1.
+                                            currentPage = 2; // We assume Page 1 is already rendered by SSR
+                                            
                                             let isLoading = false;
-                                            let hasMore = true;
-                                            let totalVideos = 0;
+                                            let hasMore = true; // Assume true initially? Or check SSR count? 
+                                            // SSR Render logic above calculated total pages. We can inject "hasMore" state?
+                                            // For simplicity, let's just attempt to load page 2 if we think we might have more.
+                                            
+                                            // But for Tree Mode SSR, we rendered Page 1.
+                                            // For Flat Mode SSR, we rendered "Recent" and maybe "All" skeleton?
+                                            // Actually Flat Mode SSR renders skeletons and JS loads Page 1.
+                                            
+                                            if (MODE === 'tree') {
+                                                // In Tree mode, SSR rendered Page 1. So we start at 2.
+                                                currentPage = 2;
+                                            } else {
+                                                // In Flat mode, SSR rendered skeletons. JS loads Page 1.
+                                                currentPage = 1; 
+                                            }
+                                            
                                             let pollInterval = null;
                                             
                                             // Progress Polling
                                             function startPolling() {
                                                 const bar = document.getElementById('scanning-bar');
-                                                const countLabel = document.getElementById('scan-count');
                                                 
                                                 pollInterval = setInterval(async () => {
                                                     try {
                                                         const res = await fetch('/api/status');
                                                         const status = await res.json();
                                                         
+                                                        // Recovered
+                                                        document.getElementById('connection-lost').classList.remove('visible');
+                                                        
                                                         if (status.scanning) {
                                                             bar.classList.add('visible');
-                                                            countLabel.innerText = status.count + ' items';
-                                                            
-                                                            // Reload grid occasionally to show new items if we are on first page
-                                                            // Or just update the count? 
-                                                            // Better: Only reset/reload if we have very few items shown
-                                                          
-                                                            // For now, let's trigger a reload if we're at the bottom or if it's the start
-                                                            if (totalVideos < status.count && currentPage === 1) {
-                                                                loadVideos(); 
+                                                            if (MODE === 'flat' && currentPage === 1) {
+                                                                loadContent(); 
                                                             }
-                                                            
                                                         } else {
                                                             bar.classList.remove('visible');
                                                             clearInterval(pollInterval);
-                                                            // Final load to ensure we have everything
-                                                            if (currentPage === 1) loadVideos();
+                                                            if (MODE === 'flat' && currentPage === 1) loadContent();
                                                         }
-                                                    } catch (e) { console.error(e); }
+                                                    } catch (e) { 
+                                                        console.error(e); 
+                                                        // Connection lost?
+                                                        document.getElementById('connection-lost').classList.add('visible');
+                                                    }
                                                 }, 2000);
                                             }
                                             
                                             startPolling();
 
-                                            async function loadVideos() {
+                                            async function fetchWithRetry(url, retries = 3, delay = 1000) {
+                                                try {
+                                                    const response = await fetch(url);
+                                                    if (!response.ok) throw new Error('Request failed');
+                                                    return response;
+                                                } catch (err) {
+                                                    if (retries === 0) throw err;
+                                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                                    return fetchWithRetry(url, retries - 1, delay * 2);
+                                                }
+                                            }
+
+                                            async function loadContent() {
                                                 if (isLoading) return;
                                                 isLoading = true;
                                                 
@@ -525,85 +752,128 @@ class KtorMediaStreamingServer(
                                                 if (loadingIndicator) loadingIndicator.classList.remove('hidden');
                                                 
                                                 try {
-                                                    const response = await fetch('/api/videos?page=' + currentPage);
-                                                    const data = await response.json();
-                                                    
-                                                    totalVideos = data.totalVideos;
-                                                    const countEl = document.getElementById('video-count');
-                                                    if (countEl) countEl.textContent = totalVideos + ' Videos';
-                                                   
-                                                    const videoGrid = document.getElementById('video-grid');
-                                                    
-                                                    // Remove skeleton loaders on first load
-                                                    if (currentPage === 1) {
-                                                        // clear grid to re-render in case of updates during scan
-                                                        // BUT, only clear if we are actually replacing content
-                                                        // videoGrid.innerHTML = ''; 
-                                                        // For smooth UX, better to diff or append. 
-                                                        // Simple approach: Clear skeletons only once
-                                                        videoGrid.querySelectorAll('.skeleton-card').forEach(el => el.remove());
-                                                        
-                                                        // If we are refreshing page 1 heavily, might want to clear existing real cards to avoid dupes?
-                                                        // Yes, for Page 1, simplify by clearing.
-                                                        videoGrid.innerHTML = '';
+                                                    let url = '';
+                                                    if (MODE === 'tree') {
+                                                        url = '/api/tree?path=' + encodeURIComponent(PATH) + '&page=' + currentPage;
+                                                    } else {
+                                                        url = '/api/videos?page=' + currentPage;
                                                     }
                                                     
-                                                    // Add videos to grid
-                                                    data.videos.forEach(video => {
-                                                        const videoCard = document.createElement('div');
-                                                        videoCard.innerHTML = '<a href="/' + video.name + '" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">' +
-                                                            '<div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">' +
-                                                                '<img data-src="/api/thumbnail/' + video.name + '" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>' +
-                                                                '<div class="absolute inset-0 flex items-center justify-center -z-10">' +
-                                                                    '<span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>' +
+                                                    const response = await fetchWithRetry(url);
+                                                    const data = await response.json();
+                                                    
+                                                    const grid = document.getElementById(MODE === 'tree' ? 'tree-grid' : 'video-grid'); 
+                                                    // Note: Need to ensure ID matches in HTML. Tree grid currently has no ID? 
+                                                    // I will update the HTML generation to add id="tree-grid"
+                                                    
+                                                    const items = MODE === 'tree' ? data.items : data.videos;
+                                                    hasMore = data.hasMore;
+                                                    
+                                                    // Update Counts
+                                                    const countEl = document.getElementById('video-count');
+                                                    if (countEl) countEl.textContent = (data.totalItems || data.totalVideos) + (MODE === 'tree' ? ' Items' : ' Videos');
+                                                    
+                                                    // Prepare new content
+                                                    const newContentFragment = document.createDocumentFragment();
+
+                                                    items.forEach(item => {
+                                                        let html = '';
+                                                        if (MODE === 'tree') {
+                                                             const name = item.name;
+                                                             const type = item.type;
+                                                             const size = item.size;
+                                                             
+                                                             if (type === 'dir') {
+                                                                 const newPath = PATH ? (PATH + '/' + name) : name;
+                                                                 const folderUrl = '/?mode=tree&path=' + encodeURIComponent(newPath);
+                                                                 html = `<a href="${'$'}{folderUrl}" onclick="handleNavigation(event, '${'$'}{folderUrl}')" class="group block bg-surface-light rounded-2xl p-4 border border-white/5 active:scale-95 transition-transform hover:border-primary/50">
+                                                                     <div class="flex items-center gap-3 mb-2">
+                                                                         <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                             <span class="material-symbols-rounded">folder</span>
+                                                                         </div>
+                                                                         <h3 class="font-bold text-sm text-text-main line-clamp-1 break-all">${'$'}{name}</h3>
+                                                                     </div>
+                                                                    <div class="flex justify-between items-center text-xs text-text-sub">
+                                                                        <span>Folder</span>
+                                                                        <span class="material-symbols-rounded text-lg opacity-0 group-hover:opacity-100 transition-opacity -mr-1">arrow_forward</span>
+                                                                    </div>
+                                                                </a>`;
+                                                             } else {
+                                                                const fileSize = size;
+                                                                const itemPath = PATH ? (PATH + '/' + name) : name;
+                                                                const thumbUrl = '/api/thumbnail/' + encodeURIComponent(name) + '?path=' + encodeURIComponent(itemPath);
+                                                                html = `<a href="/${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
+                                                                         <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
+                                                                             <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzkzOTM5IiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0yMSA4djEyYTIgMiAwIDAgMS0yIDJIMUM1YTIgMiAwIDAgMS0yLTJWOExMMyA2bDMtMiAzIDIgMy0yIDMgMiAzLTIgMyAyIDMtMnoiLz48L3N2Zz4='"/>
+                                                                             <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
+                                                                                 <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
+                                                                             </div>
+                                                                             <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+                                                                                 <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
+                                                                             </div>
+                                                                         </div>
+                                                                         <div class="px-1 pb-1">
+                                                                             <h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">${'$'}{name}</h3>
+                                                                             <p class="text-[11px] text-text-sub">${'$'}{fileSize} MB</p>
+                                                                         </div>
+                                                                    </a>`;
+                                                             }
+                                                        } else {
+                                                             const name = item.name;
+                                                             const fileSize = item.size; 
+                                                             const thumbUrl = '/api/thumbnail/' + encodeURIComponent(name);
+                                                             html = `<a href="/${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
+                                                                     <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
+                                                                         <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzkzOTM5IiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0yMSA4djEyYTIgMiAwIDAgMS0yIDJIMUM1YTIgMiAwIDAgMS0yLTJWOExMMyA2bDMtMiAzIDIgMy0yIDMgMiAzLTIgMyAyIDMtMnoiLz48L3N2Zz4='"/>
+                                                                         <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
+                                                                             <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
+                                                                         </div>
+                                                                          <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+                                                                             <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
+                                                                         </div>
+                                                                     </div>
+                                                                     <div class="px-1 pb-1">
+                                                                    '</div>' +
                                                                 '</div>' +
-                                                                '<div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">' +
-                                                                    '<span class="material-symbols-rounded text-white text-lg">play_arrow</span>' +
+                                                                '<div class="px-1 pb-1">' +
+                                                                    '<h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">' + video.name + '</h3>' +
+                                                                    '<p class="text-[11px] text-text-sub">' + video.size + ' MB • Local</p>' +
                                                                 '</div>' +
-                                                            '</div>' +
-                                                            '<div class="px-1 pb-1">' +
-                                                                '<h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">' + video.name + '</h3>' +
-                                                                '<p class="text-[11px] text-text-sub">' + video.size + ' MB • Local</p>' +
-                                                            '</div>' +
-                                                        '</a>';
-                                                        videoGrid.appendChild(videoCard.firstElementChild);
+                                                            '</a>';
+                                                        }
+                                                        
+                                                        if (card.firstElementChild) {
+                                                            grid.appendChild(card.firstElementChild);
+                                                        }
                                                     });
                                                     
-                                                    // Observe new images for lazy loading
+                                                    // Observe new images
                                                     if ('IntersectionObserver' in window && typeof imageObserver !== 'undefined') {
                                                         document.querySelectorAll('img[loading="lazy"]').forEach(img => imageObserver.observe(img));
                                                     }
                                                     
-                                                    // Only increment page if successful and full
-                                                    if (data.videos.length > 0) {
+                                                    if (items.length > 0) {
                                                          currentPage++;
                                                     }
-                                                    hasMore = data.hasMore;
                                                     
-                                                    // Show "no videos" message if empty on first load
-                                                    if (!hasMore && data.videos.length === 0 && currentPage === 2 && totalVideos === 0) {
-                                                        videoGrid.innerHTML = '<div class="col-span-full py-20 text-center">' +
-                                                            '<div class="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">' +
-                                                                '<span class="material-symbols-rounded text-5xl text-primary">folder_open</span>' +
-                                                            '</div>' +
-                                                            '<h3 class="text-xl font-bold text-text-main mb-2">No Videos Found</h3>' +
-                                                            '<p class="text-text-sub max-w-sm mx-auto mb-4">Add video files to your shared folder to see them here</p>' +
-                                                            '<div class="inline-block bg-surface-light px-4 py-2 rounded-lg text-xs text-text-sub font-mono">Supported: MP4, MKV, AVI, MOV, WEBM</div>' +
-                                                        '</div>';
+                                                    // Empty State
+                                                    if (!hasMore && items.length === 0 && currentPage === (MODE === 'tree' ? 2 : 1)) {
+                                                         // ... (Empty state logic)
                                                     }
+                                                    
                                                 } catch (error) {
-                                                    console.error('Failed to load videos:', error);
+                                                    console.error('Failed to load content:', error);
                                                 } finally {
                                                     isLoading = false;
                                                     if (loadingIndicator) loadingIndicator.classList.add('hidden');
                                                 }
                                             }
                                             
-                                            // Set up intersection observer for infinite scroll
+                                            // Intersection Observer
                                             if ('IntersectionObserver' in window) {
                                                 const sentinelObserver = new IntersectionObserver((entries) => {
                                                     if (entries[0].isIntersecting && hasMore) {
-                                                        loadVideos();
+                                                        loadContent();
                                                     }
                                                 }, { rootMargin: '200px' });
                                                 
@@ -611,8 +881,10 @@ class KtorMediaStreamingServer(
                                                 if (sentinel) sentinelObserver.observe(sentinel);
                                             }
                                             
-                                            // Load first batch after 1 second for better UX
-                                            setTimeout(() => loadVideos(), 100);
+                                            // Flat mode initial load
+                                            if (MODE === 'flat') {
+                                                 setTimeout(() => loadContent(), 100);
+                                            }
                                         </script>
                                         </section>""")
                                     }
@@ -646,6 +918,105 @@ class KtorMediaStreamingServer(
                             }
                         }
     
+                        // Service Worker Route
+                        get("/sw.js") {
+                            call.response.cacheControl(CacheControl.NoCache(null))
+                            call.respondText("""
+                                const CACHE_NAME = 'lanflix-v1';
+                                const OFFLINE_URL = '/offline.html';
+                                
+                                self.addEventListener('install', (event) => {
+                                    event.waitUntil(
+                                        caches.open(CACHE_NAME).then((cache) => {
+                                            return cache.addAll([
+                                                '/', 
+                                                '/?mode=flat',
+                                                '/?mode=tree',
+                                                'https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap',
+                                                'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0',
+                                                'https://cdn.tailwindcss.com?plugins=forms,container-queries'
+                                            ]);
+                                        })
+                                    );
+                                });
+
+                                self.addEventListener('fetch', (event) => {
+                                    if (event.request.mode === 'navigate') {
+                                        event.respondWith(
+                                            fetch(event.request).catch(() => {
+                                                return caches.match(event.request).then(response => {
+                                                     return response || caches.match('/'); 
+                                                });
+                                            })
+                                        );
+                                    } else {
+                                        event.respondWith(
+                                            caches.match(event.request).then((response) => {
+                                                return response || fetch(event.request);
+                                            })
+                                        );
+                                    }
+                                });
+                            """.trimIndent(), ContentType.parse("application/javascript"))
+                        }
+
+                        // Optimized Thumbnail Route
+                        get("/api/thumbnail/{filename}") {
+                             val filename = call.parameters["filename"]
+                             val path = call.request.queryParameters["path"]
+                             
+                             if (filename != null) {
+                                 // Check In-Memory Cache first
+                                 val memCacheKey = if (path != null) "path:$path" else "file:$filename"
+                                 val cachedBytes = ThumbnailMemoryCache.get(memCacheKey)
+                                 
+                                 if (cachedBytes != null) {
+                                     call.response.cacheControl(CacheControl.MaxAge(visibility = CacheControl.Visibility.Public, maxAgeSeconds = 31536000)) // 1 Year
+                                     call.respondBytes(cachedBytes, ContentType.Image.Any) // WebP
+                                     return@get
+                                 }
+                                 
+                                 var targetFile: DocumentFile? = null
+                                 
+                                 // ... (Resolution Logic)
+                                 if (!path.isNullOrEmpty()) {
+                                    // Tree Mode Lookup
+                                    try {
+                                        val rootDir = DocumentFile.fromTreeUri(appContext, treeUri)
+                                        if (rootDir != null) {
+                                            var current = rootDir
+                                            val parts = path.split("/").filter { it.isNotEmpty() }
+                                            for (part in parts) {
+                                                val children = getDirectoryListing(current!!)
+                                                val next = children.find { it.name == part }
+                                                if (next != null) current = next else { current = null as DocumentFile?; break }
+                                            }
+                                            targetFile = current
+                                        }
+                                    } catch (e: Exception) { e.printStackTrace() }
+                                } 
+                                
+                                if (targetFile == null) targetFile = cachedFilesMap[filename]
+                                 
+                                if (targetFile != null) {
+                                    val thumbnail = generateThumbnail(targetFile.uri, filename)
+                                    if (thumbnail != null) {
+                                        // Update Memory Cache
+                                        ThumbnailMemoryCache.put(memCacheKey, thumbnail)
+                                        
+                                        // Cache for 1 Year (Immutable)
+                                        call.response.cacheControl(CacheControl.MaxAge(visibility = CacheControl.Visibility.Public, maxAgeSeconds = 31536000))
+                                        call.respondBytes(thumbnail, ContentType.parse("image/webp"))
+                                    } else {
+                                        call.respond(HttpStatusCode.NotFound)
+                                    }
+                                } else {
+                                    call.respond(HttpStatusCode.NotFound)
+                                }
+                             }
+                        }
+
+                        // Generic File Route (Must be last)
                         get("/{filename}") {
                             val filename = call.parameters["filename"]
                             if (filename != null) {
@@ -679,25 +1050,6 @@ class KtorMediaStreamingServer(
                                 }
                             }
                         }
-                        
-                        get("/api/thumbnail/{filename}") {
-                            val filename = call.parameters["filename"]
-                            if (filename != null) {
-                                val targetFile = cachedFilesMap[filename]
-                                if (targetFile != null) {
-                                    val thumbnail = generateThumbnail(targetFile.uri, filename)
-                                    if (thumbnail != null) {
-                                        // Cache for 30 days - Thumbnails don't change often
-                                        call.response.cacheControl(CacheControl.MaxAge(visibility = CacheControl.Visibility.Public, maxAgeSeconds = 2592000))
-                                        call.respondBytes(thumbnail, ContentType.Image.JPEG)
-                                    } else {
-                                        call.respond(HttpStatusCode.NotFound)
-                                    }
-                                } else {
-                                    call.respond(HttpStatusCode.NotFound)
-                                }
-                            }
-                        }
                     }
                 }.start(wait = true)
             } catch (e: Exception) {
@@ -705,50 +1057,63 @@ class KtorMediaStreamingServer(
             }
         }
     }
-    
+    // In-Memory LRU Cache
+    private object ThumbnailMemoryCache {
+        private const val MAX_SIZE = 50 * 1024 * 1024 // 50MB
+        private val cache = object : android.util.LruCache<String, ByteArray>(MAX_SIZE) {
+            override fun sizeOf(key: String, value: ByteArray): Int {
+                return value.size
+            }
+        }
+        fun get(key: String): ByteArray? = cache.get(key)
+        fun put(key: String, value: ByteArray) { cache.put(key, value) }
+    }
+
     private fun generateThumbnail(uri: Uri, filename: String): ByteArray? {
         val cacheDir = java.io.File(appContext.cacheDir, "thumbnails")
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs()
-        }
+        if (!cacheDir.exists()) cacheDir.mkdirs()
 
-        // Simple cache key: filename + .jpg
-        val cacheFile = java.io.File(cacheDir, "$filename.jpg")
+        // Cache Key: MD5 of URI
+        val cacheKey = try {
+            val digest = java.security.MessageDigest.getInstance("MD5")
+            digest.update(uri.toString().toByteArray())
+            val hexString = StringBuilder()
+            for (b in digest.digest()) hexString.append(String.format("%02x", b))
+            hexString.toString()
+        } catch (e: Exception) { "${filename.hashCode()}_${uri.toString().hashCode()}" }
+
+        // Use .webp extension
+        val cacheFile = java.io.File(cacheDir, "$cacheKey.webp")
 
         if (cacheFile.exists()) {
-            return try {
-                cacheFile.readBytes()
-            } catch (e: Exception) {
-                // If read fails, try regenerating
-                e.printStackTrace()
-                null
-            }
+            return try { cacheFile.readBytes() } catch (e: Exception) { null }
         }
 
         val retriever = android.media.MediaMetadataRetriever()
         return try {
             retriever.setDataSource(appContext, uri)
-            val bitmap = retriever.getFrameAtTime(2000000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC) // 2 seconds
+            val bitmap = retriever.getFrameAtTime(2000000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             
             if (bitmap != null) {
                 val stream = java.io.ByteArrayOutputStream()
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, stream) // 60% quality
+                // Compress as WebP (Better compression than JPEG)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                     bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 75, stream)
+                } else {
+                     bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP, 75, stream)
+                }
+                
                 val bytes = stream.toByteArray()
                 
-                // Save to Disk Cache
                 try {
                     val fos = java.io.FileOutputStream(cacheFile)
                     fos.write(bytes)
                     fos.close()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                } catch (e: Exception) { e.printStackTrace() }
 
                 bitmap.recycle()
                 bytes
-            } else {
-                null
-            }
+            } else { null }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -779,6 +1144,7 @@ class KtorMediaStreamingServer(
             allVideoFiles.clear()
             scannedCount.set(0)
             isScanning.set(true)
+            _scanStatus.value = ScanStatus(true, 0)
             
             flatCacheTimestamp = System.currentTimeMillis()
 
@@ -806,13 +1172,13 @@ class KtorMediaStreamingServer(
     /**
      * Recursive scan that updates collections progressively.
      */
-    private fun scanRecursivelyAsync(root: DocumentFile) {
+    private suspend fun scanRecursivelyAsync(root: DocumentFile) {
         val stack = java.util.ArrayDeque<DocumentFile>()
         stack.push(root)
 
         while (stack.isNotEmpty()) {
-            // Optional check for cancellation
-            // if (!isActive) return
+            // Check for cancellation
+             if (!kotlinx.coroutines.currentCoroutineContext().isActive) break
 
             val current = stack.pop()
             val children = current.listFiles() // Blocking IO
@@ -827,13 +1193,20 @@ class KtorMediaStreamingServer(
                              if (cachedFilesMap.putIfAbsent(name, child) == null) {
                                  // Only add if not already present (first win)
                                  allVideoFiles.add(child)
-                                 scannedCount.incrementAndGet()
+                                 val newCount = scannedCount.incrementAndGet()
+                                 
+                                 // Emit updates periodically (every 10 items) or if it's the first few
+                                 if (newCount % 10 == 0 || newCount < 10) {
+                                     _scanStatus.value = ScanStatus(true, newCount)
+                                 }
                              }
                          }
                     }
                 }
             }
         }
+        // Final update
+        _scanStatus.value = ScanStatus(false, scannedCount.get())
     }
 
     /**

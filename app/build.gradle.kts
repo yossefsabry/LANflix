@@ -73,6 +73,8 @@ dependencies {
     implementation("io.ktor:ktor-server-netty:2.3.7")
     implementation("io.ktor:ktor-server-partial-content:2.3.7")
     implementation("io.ktor:ktor-server-auto-head-response:2.3.7")
+    implementation("io.ktor:ktor-server-compression:2.3.7")
+    implementation("io.ktor:ktor-server-caching-headers:2.3.7")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

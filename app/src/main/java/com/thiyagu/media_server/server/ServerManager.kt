@@ -58,7 +58,7 @@ class ServerManager(private val context: Context) {
             serverStartTime = System.currentTimeMillis() // Track start time
 
             val url = "http://$ip:$port"
-            _state.value = ServerState.Running(url)
+            _state.value = ServerState.Running(url, server!!.scanStatus)
             
             // Register NSD
             registerService(port)

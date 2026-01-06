@@ -91,10 +91,27 @@ class StreamingActivity : AppCompatActivity() {
         // 3. Library Stats
         lifecycleScope.launch {
             viewModel.librarySize.collect { count ->
-                binding.tvStatLibrary.text = "$count Videos"
+                // Only update if NOT scanning (avoid overwriting live count)
+                if (!viewModel.scanStatus.value.isScanning) {
+                    binding.tvStatLibrary.text = "$count Videos"
+                }
             }
         }
         
+        // 7. Live Scanning Status
+        lifecycleScope.launch {
+            viewModel.scanStatus.collect { status ->
+                if (status.isScanning) {
+                    binding.progressScanning.visibility = View.VISIBLE
+                    binding.tvStatLibrary.text = "${status.count} Videos"
+                } else {
+                    binding.progressScanning.visibility = View.GONE
+                    // Revert to DB count (or ensure it's up to date)
+                    binding.tvStatLibrary.text = "${viewModel.librarySize.value} Videos"
+                }
+            }
+        }
+
         // 4. Network Speed
         lifecycleScope.launch {
             viewModel.networkSpeed.collect { mbps ->
