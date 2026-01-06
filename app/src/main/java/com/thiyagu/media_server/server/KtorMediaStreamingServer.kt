@@ -1048,12 +1048,12 @@ class KtorMediaStreamingServer(
     <!-- Bottom Navigation -->
     <nav class="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-white/5 px-6 py-2 pb-5 z-50">
         <div class="flex items-center justify-between max-w-sm mx-auto">
-            <a href="/?theme=$themeParam" class="flex flex-col items-center gap-1 ${if (mode != "tree") "text-primary" else "text-text-sub"}">
+            <a href="/?theme=$themeParam" onclick="if(window.location.search.includes('mode=tree')) document.getElementById('loading-indicator').classList.remove('hidden')" class="flex flex-col items-center gap-1 ${if (mode != "tree") "text-primary" else "text-text-sub"}">
                 <span class="material-symbols-rounded text-2xl">home</span>
                 <span class="text-[10px] font-bold">Home</span>
             </a>
             
-            <a href="/?mode=tree&theme=$themeParam" class="w-14 h-14 -mt-8 rounded-full flex items-center justify-center shadow-[0_0_20px_${if (mode == "tree") "rgba(250,198,56,0.3)" else "rgba(0,0,0,0)"}] border-4 border-background ${if (mode == "tree") "bg-primary text-black" else "bg-surface-light text-text-sub"} active:scale-90 transition-all">
+            <a href="/?mode=tree&theme=$themeParam" onclick="if(!window.location.search.includes('mode=tree')) document.getElementById('loading-indicator').classList.remove('hidden')" class="w-14 h-14 -mt-8 rounded-full flex items-center justify-center shadow-[0_0_20px_${if (mode == "tree") "rgba(250,198,56,0.3)" else "rgba(0,0,0,0)"}] border-4 border-background ${if (mode == "tree") "bg-primary text-black" else "bg-surface-light text-text-sub"} active:scale-90 transition-all">
                 <span class="material-symbols-rounded text-3xl">folder</span>
             </a>
             
