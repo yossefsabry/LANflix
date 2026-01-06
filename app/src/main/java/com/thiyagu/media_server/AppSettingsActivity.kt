@@ -42,6 +42,11 @@ class AppSettingsActivity : AppCompatActivity() {
             showHistoryRetentionDialog()
         }
         
+        // Server Name Option
+        setupOption(R.id.opt_server_name, R.drawable.ic_settings, "Server Name", "LANflix Server") {
+            showServerNameDialog()
+        }
+        
         // Observe Theme changes
         lifecycleScope.launch {
             userPreferences.themeFlow.collect { theme ->
@@ -57,14 +62,50 @@ class AppSettingsActivity : AppCompatActivity() {
         // Observe History Retention changes
         lifecycleScope.launch {
             userPreferences.historyRetentionFlow.collect { days ->
-                val subtitle = when(days) {
-                    -1 -> "Never"
-                    else -> "$days Days"
-                }
+                val subtitle = if (days == -1) "Never" else "$days Days"
                 updateOptionSubtitle(R.id.opt_history_retention, subtitle)
             }
         }
+        
+        // Observe Server Name changes
+        lifecycleScope.launch {
+            userPreferences.serverNameFlow.collect { name ->
+                updateOptionSubtitle(R.id.opt_server_name, name)
+            }
+        }
     }
+    
+    // ... (onResume)
+
+    private fun showServerNameDialog() {
+        val input = android.widget.EditText(this)
+        input.hint = "Enter Server Name"
+        val layout = android.widget.FrameLayout(this)
+        layout.setPadding(50, 20, 50, 20)
+        layout.addView(input)
+        
+        // Pre-fill current name
+        lifecycleScope.launch {
+            userPreferences.serverNameFlow.collect { name ->
+                if (input.text.isEmpty()) input.setText(name)
+            }
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Set Server Name")
+            .setView(layout)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = input.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    lifecycleScope.launch {
+                        userPreferences.saveServerName(newName)
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     
     override fun onResume() {
         super.onResume()

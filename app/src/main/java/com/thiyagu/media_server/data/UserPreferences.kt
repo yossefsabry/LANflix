@@ -32,6 +32,7 @@ class UserPreferences(private val context: Context) {
         val THEME_KEY = stringPreferencesKey("app_theme") 
         val SUBFOLDER_SCANNING_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("subfolder_scanning")
         val HISTORY_RETENTION_KEY = androidx.datastore.preferences.core.intPreferencesKey("history_retention_days")
+        val SERVER_NAME_KEY = stringPreferencesKey("server_name")
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data
@@ -74,6 +75,17 @@ class UserPreferences(private val context: Context) {
     suspend fun saveHistoryRetention(days: Int) {
         context.dataStore.edit { preferences ->
             preferences[HISTORY_RETENTION_KEY] = days
+        }
+    }
+
+    val serverNameFlow: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[SERVER_NAME_KEY] ?: "LANflix Server"
+        }
+
+    suspend fun saveServerName(name: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SERVER_NAME_KEY] = name
         }
     }
     

@@ -336,6 +336,7 @@ class KtorMediaStreamingServer(
             animation-duration: 0.3s;
         }
     </style>
+    <script>
         // Theme & Persistence Logic
         (function() {
             // Check LocalStorage for theme preference
@@ -418,7 +419,7 @@ class KtorMediaStreamingServer(
     <script>
         // Lazy load thumbnails
         if ('IntersectionObserver' in window) {
-            const imageObserver = new IntersectionObserver((entries, observer) => {
+            window.imageObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
@@ -430,7 +431,7 @@ class KtorMediaStreamingServer(
             }, { rootMargin: '50px 0px', threshold: 0.01 });
 
             document.addEventListener('DOMContentLoaded', () => {
-                document.querySelectorAll('img[loading="lazy"]').forEach(img => imageObserver.observe(img));
+                document.querySelectorAll('img[loading="lazy"]').forEach(img => window.imageObserver.observe(img));
             });
         }
     </script>
@@ -552,6 +553,10 @@ class KtorMediaStreamingServer(
                                                              val fileSize = item.length() / (1024 * 1024)
                                                              val itemPath = if (pathParam.isEmpty()) "/$name" else "$pathParam/$name"
                                                              
+                                                             // Reuse previous logic for MODE check
+                                                             // This block is for server-side rendering of the initial page.
+                                                             // The JS `createVideoCard` is for client-side dynamic loading.
+                                                             // For SSR, we directly render the HTML.
                                                              writer.write("""
                                                                 <a href="/${name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
                                                                      <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
@@ -612,7 +617,7 @@ class KtorMediaStreamingServer(
                                         <section>
                                             <div class="flex items-center justify-between mb-4">
                                                  <h2 class="text-lg font-bold">Recently Added</h2>
-                                                 <button class="text-xs font-bold text-primary">See All</button>
+                                                 <button onclick="document.getElementById('all-videos').scrollIntoView({behavior: 'smooth'})" class="text-xs font-bold text-primary">See All</button>
                                             </div>
                                             <div class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">""")
                                         
@@ -643,7 +648,7 @@ class KtorMediaStreamingServer(
                                         writer.write("""
                                         <section class="mt-6">
                                             <div class="flex items-center justify-between mb-4">
-                                                 <h2 class="text-lg font-bold">All Videos</h2>
+                                                 <h2 id="all-videos" class="text-lg font-bold">All Videos</h2>
                                                  <span id="video-count" class="text-xs text-text-sub/60 font-medium">Loading...</span>
                                             </div>
                                             <div id="video-grid" class="auto-grid pb-8">
@@ -673,7 +678,8 @@ class KtorMediaStreamingServer(
                                             <div id="loading-sentinel"></div>
                                         </section>
                                         
-                                            // Configuration
+
+                                        <script>
                                             const MODE = "${mode ?: "flat"}";
                                             const PATH = "${pathParam.replace("\"", "\\\"")}";
                                             let currentPage = ${if (mode == "tree") 1 else 1}; // Always start at 1 for JS load? No, SSR might load pg 1.
@@ -697,6 +703,80 @@ class KtorMediaStreamingServer(
                                                 // In Flat mode, SSR rendered skeletons. JS loads Page 1.
                                                 currentPage = 1; 
                                             }
+                                            
+                                            // IndexedDB Cache Manager
+                                            const CacheManager = {
+                                                dbName: 'LANflixDB',
+                                                version: 2,
+                                                storeName: 'items', // For Flat Mode (All Videos)
+                                                treeStoreName: 'tree_items', // For Tree Mode (Directory Listings)
+                                                
+                                                async open() {
+                                                    return new Promise((resolve, reject) => {
+                                                        const request = indexedDB.open(this.dbName, this.version);
+                                                        request.onupgradeneeded = (event) => {
+                                                            const db = event.target.result;
+                                                            // V1: Flat Store
+                                                            if (!db.objectStoreNames.contains(this.storeName)) {
+                                                                db.createObjectStore(this.storeName, { keyPath: 'name' });
+                                                            }
+                                                            // V2: Tree Store
+                                                            if (!db.objectStoreNames.contains(this.treeStoreName)) {
+                                                                db.createObjectStore(this.treeStoreName, { keyPath: 'path' });
+                                                            }
+                                                        };
+                                                        request.onsuccess = () => resolve(request.result);
+                                                        request.onerror = (e) => reject(e);
+                                                    });
+                                                },
+                                                
+                                                async getAll() {
+                                                    const db = await this.open();
+                                                    return new Promise((resolve, reject) => {
+                                                        const tx = db.transaction(this.storeName, 'readonly');
+                                                        const store = tx.objectStore(this.storeName);
+                                                        const request = store.getAll();
+                                                        request.onsuccess = () => resolve(request.result);
+                                                        request.onerror = () => reject(request.error);
+                                                    });
+                                                },
+                                                
+                                                async save(items) {
+                                                    if (!items || items.length === 0) return;
+                                                    const db = await this.open();
+                                                    const tx = db.transaction(this.storeName, 'readwrite');
+                                                    const store = tx.objectStore(this.storeName);
+                                                    items.forEach(item => {
+                                                        try { store.put(item); } catch (e) {}
+                                                    });
+                                                },
+                                                
+                                                async getTree(path) {
+                                                    const db = await this.open();
+                                                    return new Promise((resolve, reject) => {
+                                                        const tx = db.transaction(this.treeStoreName, 'readonly');
+                                                        const store = tx.objectStore(this.treeStoreName);
+                                                        const request = store.get(path);
+                                                        request.onsuccess = () => resolve(request.result ? request.result.items : []);
+                                                        request.onerror = () => reject(request.error);
+                                                    });
+                                                },
+
+                                                async saveTree(path, items) {
+                                                    if (!items) return;
+                                                    const db = await this.open();
+                                                    const tx = db.transaction(this.treeStoreName, 'readwrite');
+                                                    const store = tx.objectStore(this.treeStoreName);
+                                                    store.put({ path: path, items: items, timestamp: Date.now() });
+                                                },
+                                                
+                                                async clear() {
+                                                     const db = await this.open();
+                                                     const tx = db.transaction([this.storeName, this.treeStoreName], 'readwrite');
+                                                     tx.objectStore(this.storeName).clear();
+                                                     tx.objectStore(this.treeStoreName).clear();
+                                                }
+                                            };
                                             
                                             let pollInterval = null;
                                             
@@ -746,119 +826,85 @@ class KtorMediaStreamingServer(
 
                                             async function loadContent() {
                                                 if (isLoading) return;
-                                                isLoading = true;
                                                 
+                                                // Initial Load: Try Cache first
+                                                if (currentPage === (MODE === 'tree' ? 1 : 1)) { // Logic simplification as we reset pages
+                                                    try {
+                                                        let cachedItems = [];
+                                                        if (MODE === 'tree') {
+                                                            cachedItems = await CacheManager.getTree(PATH);
+                                                        } else {
+                                                            cachedItems = await CacheManager.getAll();
+                                                        }
+                                                        
+                                                        if (cachedItems && cachedItems.length > 0) {
+                                                            console.log('Rendering from cache:', cachedItems.length);
+                                                            const grid = document.getElementById(MODE === 'tree' ? 'tree-grid' : 'video-grid');
+                                                            if (grid) {
+                                                                const skeletons = grid.querySelectorAll('.skeleton-card');
+                                                                skeletons.forEach(s => s.remove());
+                                                                
+                                                                // If tree mode, we might need to clear existing empty state or previous content if any
+                                                                if (MODE === 'tree') grid.innerHTML = ''; 
+
+                                                                renderItems(cachedItems, false); // false = not new
+                                                            }
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('Cache load failed', e);
+                                                    }
+                                                }
+                                            
+                                                isLoading = true;
                                                 const loadingIndicator = document.getElementById('loading-indicator');
                                                 if (loadingIndicator) loadingIndicator.classList.remove('hidden');
                                                 
                                                 try {
-                                                    let url = '';
-                                                    if (MODE === 'tree') {
-                                                        url = '/api/tree?path=' + encodeURIComponent(PATH) + '&page=' + currentPage;
-                                                    } else {
-                                                        url = '/api/videos?page=' + currentPage;
-                                                    }
+                                                    const url = MODE === 'tree' 
+                                                        ? `/api/tree?path=` + encodeURIComponent(PATH) + `&page=` + currentPage 
+                                                        : `/api/videos?page=` + currentPage;
                                                     
                                                     const response = await fetchWithRetry(url);
                                                     const data = await response.json();
                                                     
-                                                    const grid = document.getElementById(MODE === 'tree' ? 'tree-grid' : 'video-grid'); 
-                                                    // Note: Need to ensure ID matches in HTML. Tree grid currently has no ID? 
-                                                    // I will update the HTML generation to add id="tree-grid"
-                                                    
                                                     const items = MODE === 'tree' ? data.items : data.videos;
                                                     hasMore = data.hasMore;
+                                                    
+                                                    // Save to Cache
+                                                    if (items.length > 0) {
+                                                        if (MODE === 'tree') {
+                                                            // For tree, we replace the directory cache for this path (paginated? No, tree API returns page, but usually we want to cache the whole folder if small enough. 
+                                                            // BUT my implementation of `saveTree` overwrites. If pagination, we might lose data.
+                                                            // Wait, tree API is paginated. If we cache page 1, we save page 1.
+                                                            // To simple cache, let's only cache if it's page 1? Or accumulate?
+                                                            // Accumulation is hard without state. Let's Cache Page 1 for instant first load.
+                                                            if (currentPage === 1) CacheManager.saveTree(PATH, items);
+                                                        } else {
+                                                            CacheManager.save(items);
+                                                        }
+                                                    }
                                                     
                                                     // Update Counts
                                                     const countEl = document.getElementById('video-count');
                                                     if (countEl) countEl.textContent = (data.totalItems || data.totalVideos) + (MODE === 'tree' ? ' Items' : ' Videos');
                                                     
-                                                    // Prepare new content
-                                                    const newContentFragment = document.createDocumentFragment();
+                                                    // Clear skeletons
+                                                     const grid = document.getElementById(MODE === 'tree' ? 'tree-grid' : 'video-grid');
+                                                     if (grid) {
+                                                          const skeletons = grid.querySelectorAll('.skeleton-card');
+                                                          skeletons.forEach(s => s.remove());
+                                                          // For Tree Mode, if we just loaded live data, and we already rendered cache, we should prevent dups.
+                                                          // The renderItems has dup check.
+                                                     }
+                                                    
+                                                    renderItems(items, true); // true = live data
 
-                                                    items.forEach(item => {
-                                                        let html = '';
-                                                        if (MODE === 'tree') {
-                                                             const name = item.name;
-                                                             const type = item.type;
-                                                             const size = item.size;
-                                                             
-                                                             if (type === 'dir') {
-                                                                 const newPath = PATH ? (PATH + '/' + name) : name;
-                                                                 const folderUrl = '/?mode=tree&path=' + encodeURIComponent(newPath);
-                                                                 html = `<a href="${'$'}{folderUrl}" onclick="handleNavigation(event, '${'$'}{folderUrl}')" class="group block bg-surface-light rounded-2xl p-4 border border-white/5 active:scale-95 transition-transform hover:border-primary/50">
-                                                                     <div class="flex items-center gap-3 mb-2">
-                                                                         <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                                             <span class="material-symbols-rounded">folder</span>
-                                                                         </div>
-                                                                         <h3 class="font-bold text-sm text-text-main line-clamp-1 break-all">${'$'}{name}</h3>
-                                                                     </div>
-                                                                    <div class="flex justify-between items-center text-xs text-text-sub">
-                                                                        <span>Folder</span>
-                                                                        <span class="material-symbols-rounded text-lg opacity-0 group-hover:opacity-100 transition-opacity -mr-1">arrow_forward</span>
-                                                                    </div>
-                                                                </a>`;
-                                                             } else {
-                                                                const fileSize = size;
-                                                                const itemPath = PATH ? (PATH + '/' + name) : name;
-                                                                const thumbUrl = '/api/thumbnail/' + encodeURIComponent(name) + '?path=' + encodeURIComponent(itemPath);
-                                                                html = `<a href="/${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
-                                                                         <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
-                                                                             <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzkzOTM5IiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0yMSA4djEyYTIgMiAwIDAgMS0yIDJIMUM1YTIgMiAwIDAgMS0yLTJWOExMMyA2bDMtMiAzIDIgMy0yIDMgMiAzLTIgMyAyIDMtMnoiLz48L3N2Zz4='"/>
-                                                                             <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
-                                                                                 <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
-                                                                             </div>
-                                                                             <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
-                                                                                 <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
-                                                                             </div>
-                                                                         </div>
-                                                                         <div class="px-1 pb-1">
-                                                                             <h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">${'$'}{name}</h3>
-                                                                             <p class="text-[11px] text-text-sub">${'$'}{fileSize} MB</p>
-                                                                         </div>
-                                                                    </a>`;
-                                                             }
-                                                        } else {
-                                                             const name = item.name;
-                                                             const fileSize = item.size; 
-                                                             const thumbUrl = '/api/thumbnail/' + encodeURIComponent(name);
-                                                             html = `<a href="/${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
-                                                                     <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
-                                                                         <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzkzOTM5IiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0yMSA4djEyYTIgMiAwIDAgMS0yIDJIMUM1YTIgMiAwIDAgMS0yLTJWOExMMyA2bDMtMiAzIDIgMy0yIDMgMiAzLTIgMyAyIDMtMnoiLz48L3N2Zz4='"/>
-                                                                         <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
-                                                                             <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
-                                                                         </div>
-                                                                          <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
-                                                                             <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
-                                                                         </div>
-                                                                     </div>
-                                                                     <div class="px-1 pb-1">
-                                                                    '</div>' +
-                                                                '</div>' +
-                                                                '<div class="px-1 pb-1">' +
-                                                                    '<h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">' + video.name + '</h3>' +
-                                                                    '<p class="text-[11px] text-text-sub">' + video.size + ' MB • Local</p>' +
-                                                                '</div>' +
-                                                            '</a>';
-                                                        }
-                                                        
-                                                        if (card.firstElementChild) {
-                                                            grid.appendChild(card.firstElementChild);
-                                                        }
-                                                    });
-                                                    
-                                                    // Observe new images
-                                                    if ('IntersectionObserver' in window && typeof imageObserver !== 'undefined') {
-                                                        document.querySelectorAll('img[loading="lazy"]').forEach(img => imageObserver.observe(img));
-                                                    }
-                                                    
                                                     if (items.length > 0) {
                                                          currentPage++;
                                                     }
                                                     
-                                                    // Empty State
-                                                    if (!hasMore && items.length === 0 && currentPage === (MODE === 'tree' ? 2 : 1)) {
-                                                         // ... (Empty state logic)
+                                                    if (!hasMore && items.length === 0) {
+                                                         // Empty state
                                                     }
                                                     
                                                 } catch (error) {
@@ -867,6 +913,91 @@ class KtorMediaStreamingServer(
                                                     isLoading = false;
                                                     if (loadingIndicator) loadingIndicator.classList.add('hidden');
                                                 }
+                                            }
+                                            
+                                            function renderItems(items, isLive) {
+                                                const grid = document.getElementById(MODE === 'tree' ? 'tree-grid' : 'video-grid');
+                                                if (!grid) return;
+                                                
+                                                // We need to deduplicate against what's already on screen
+                                                // BUT for cache vs live:
+                                                // If we rendered cache, 'items' from live might overlap.
+                                                // The render logic below checks `document.querySelector` which handles this.
+                                                
+                                                const fragment = document.createDocumentFragment();
+                                                
+                                                items.forEach(item => {
+                                                    const name = item.name;
+                                                    
+                                                    // duplicate check
+                                                     try {
+                                                         if (document.querySelector(`a[href="/${'$'}{name.replace(/"/g, '\\"')}"]`)) return;
+                                                     } catch (e) { return; }
+
+                                                    let html = '';
+                                                    // ... (HTML Generation Logic extracted or inline)
+                                                    // For brevity in this replace, I'll inline the previous logic but streamlined
+                                                    
+                                                    // Reuse previous logic for MODE check
+                                                    if (MODE === 'tree') {
+                                                         const type = item.type;
+                                                         const size = item.size;
+                                                         if (type === 'dir') {
+                                                            const newPath = PATH ? (PATH + '/' + name) : name;
+                                                            const folderUrl = '/?mode=tree&path=' + encodeURIComponent(newPath);
+                                                            html = `<a href="${'$'}{folderUrl}" onclick="handleNavigation(event, '${'$'}{folderUrl}')" class="group block bg-surface-light rounded-2xl p-4 border border-white/5 active:scale-95 transition-transform hover:border-primary/50">
+                                                                <div class="flex items-center gap-3 mb-2">
+                                                                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                        <span class="material-symbols-rounded">folder</span>
+                                                                    </div>
+                                                                    <h3 class="font-bold text-sm text-text-main line-clamp-1 break-all">${'$'}{name}</h3>
+                                                                </div>
+                                                                <div class="flex justify-between items-center text-xs text-text-sub"><span>Folder</span></div>
+                                                            </a>`;
+                                                         } else {
+                                                            const fileSize = size;
+                                                            const itemPath = PATH ? (PATH + '/' + name) : name;
+                                                            const thumbUrl = '/api/thumbnail/' + encodeURIComponent(name) + '?path=' + encodeURIComponent(itemPath);
+                                                            html = createVideoCard(name, fileSize, thumbUrl, isLive);
+                                                         }
+                                                    } else {
+                                                         // Flat Mode
+                                                         const fileSize = item.size;
+                                                         const thumbUrl = '/api/thumbnail/' + encodeURIComponent(name);
+                                                         html = createVideoCard(name, fileSize, thumbUrl, isLive);
+                                                    }
+
+                                                    const tempDiv = document.createElement('div');
+                                                    tempDiv.innerHTML = html;
+                                                    if (tempDiv.firstElementChild) {
+                                                        grid.appendChild(tempDiv.firstElementChild);
+                                                    }
+                                                });
+                                                
+                                                // Observe new images
+                                                if ('IntersectionObserver' in window && window.imageObserver) {
+                                                    document.querySelectorAll('img[loading="lazy"]').forEach(img => window.imageObserver.observe(img));
+                                                }
+                                            }
+
+                                            function createVideoCard(name, size, thumbUrl, isNew = false) {
+                                                 const newBadge = isNew ? `<div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10">NEW</div>` : '';
+                                                 return `<a href="/${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform">
+                                                     <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
+                                                         ${'$'}{newBadge}
+                                                         <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.classList.add('opacity-0')" />
+                                                         <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
+                                                             <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
+                                                         </div>
+                                                         <div class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center">
+                                                             <span class="material-symbols-rounded text-white text-lg">play_arrow</span>
+                                                         </div>
+                                                     </div>
+                                                     <div class="px-1 pb-1">
+                                                         <h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">${'$'}{name}</h3>
+                                                         <p class="text-[11px] text-text-sub">${'$'}{size} MB</p>
+                                                     </div>
+                                                </a>`;
                                             }
                                             
                                             // Intersection Observer
@@ -880,6 +1011,26 @@ class KtorMediaStreamingServer(
                                                 const sentinel = document.getElementById('loading-sentinel');
                                                 if (sentinel) sentinelObserver.observe(sentinel);
                                             }
+                                            
+                                            // Connection Monitoring
+                                            function updateConnectionStatus(online) {
+                                                const overlay = document.getElementById('connection-lost');
+                                                if (online) {
+                                                    if (overlay) overlay.classList.remove('visible');
+                                                    // Retry loading if we were offline
+                                                    if (!isLoading && hasMore) loadContent();
+                                                    
+                                                    // Reload page if we were stuck in initial loading
+                                                    if (document.getElementById('video-count') && document.getElementById('video-count').textContent === 'Loading...') {
+                                                        window.location.reload();
+                                                    }
+                                                } else {
+                                                    if (overlay) overlay.classList.add('visible');
+                                                }
+                                            }
+                                            
+                                            window.addEventListener('online', () => updateConnectionStatus(true));
+                                            window.addEventListener('offline', () => updateConnectionStatus(false));
                                             
                                             // Flat mode initial load
                                             if (MODE === 'flat') {
@@ -1164,6 +1315,7 @@ class KtorMediaStreamingServer(
                     }
                 } finally {
                     isScanning.set(false)
+                    _scanStatus.value = ScanStatus(false, scannedCount.get())
                 }
             }
         }

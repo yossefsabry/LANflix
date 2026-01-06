@@ -6,11 +6,12 @@ import android.net.Uri
 import com.thiyagu.media_server.service.MediaServerService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
 
-class ServerManager(private val context: Context) {
+class ServerManager(private val context: Context, private val userPreferences: com.thiyagu.media_server.data.UserPreferences) {
 
     private var server: KtorMediaStreamingServer? = null
     private val _state = MutableStateFlow<ServerState>(ServerState.Stopped)
@@ -124,8 +125,13 @@ class ServerManager(private val context: Context) {
     private fun registerService(port: Int) {
         try {
             val nsdManager = context.getSystemService(Context.NSD_SERVICE) as android.net.nsd.NsdManager
+            
+            val serviceNameStr = kotlinx.coroutines.runBlocking {
+                userPreferences.serverNameFlow.first()
+            }
+            
             val serviceInfo = android.net.nsd.NsdServiceInfo().apply {
-                serviceName = "LANflix-${android.os.Build.MODEL}"
+                serviceName = serviceNameStr
                 serviceType = "_lanflix._tcp"
                 setPort(port)
                 // In the future, we can add attributes here like:

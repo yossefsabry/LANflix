@@ -35,7 +35,7 @@ val appModule = module {
     single { UserPreferences(androidContext()) }
 
     // Managers
-    single { ServerManager(androidContext()) }
+    single { ServerManager(androidContext(), get()) }
     single { ServerDiscoveryManager(androidContext()) }
 
     // Repositories
