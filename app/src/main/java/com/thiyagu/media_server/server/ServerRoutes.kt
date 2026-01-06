@@ -17,9 +17,43 @@ import java.net.URLEncoder
 
 fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     
-    // API to force refresh cache
+    // NEW: Fast metadata cache endpoint
+    get("/api/cache") {
+        try {
+            val cache = server.cacheManager.loadCache()
+            
+            if (cache != null) {
+                // Return cached metadata as JSON
+                val json = com.google.gson.Gson().toJson(cache)
+                call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
+            } else {
+                // No cache exists, build it now (this will take time on first request)
+                val newCache = server.cacheManager.buildCache()
+                val json = com.google.gson.Gson().toJson(newCache)
+                call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            call.respond(HttpStatusCode.InternalServerError, e.localizedMessage ?: "Cache error")
+        }
+    }
+    
+    // NEW: Force rebuild cache
+    get("/api/refresh-cache") {
+        try {
+            val newCache = server.cacheManager.buildCache()
+            val json = com.google.gson.Gson().toJson(newCache)
+            call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            call.respond(HttpStatusCode.InternalServerError, e.localizedMessage ?: "Cache rebuild error")
+        }
+    }
+    
+    // API to force refresh cache (legacy - now triggers metadata cache rebuild)
     get("/api/refresh") {
         server.directoryCache.clear()
+        server.cacheManager.clearCache()
         server.refreshCache()
         call.respondText("Cache Refresh Started", status = HttpStatusCode.OK)
     }
@@ -28,7 +62,20 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     get("/api/status") {
         val currentCount = server.scannedCount.get()
         val scanning = server.isScanning.get()
-        val status = """{"scanning": $scanning, "count": $currentCount, "totalScanned": $currentCount}"""
+        
+        // Estimate progress (rough approximation based on typical folder structures)
+        // For better accuracy, we'd need to count directories first, but that defeats the purpose
+        val progress = if (scanning && currentCount > 0) {
+            // Assume we're making progress, show increasing percentage
+            // This is a rough estimate - real progress tracking would require knowing total files
+            minOf(95, (currentCount * 3).coerceAtMost(95)) // Cap at 95% until done
+        } else if (!scanning && currentCount > 0) {
+            100 // Complete
+        } else {
+            0 // Not started or no files
+        }
+        
+        val status = """{"scanning": $scanning, "count": $currentCount, "totalScanned": $currentCount, "progress": $progress}"""
         call.respondText(status, ContentType.Application.Json, HttpStatusCode.OK)
     }
     
@@ -108,12 +155,14 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
         
         val visibilityManager = com.thiyagu.media_server.utils.VideoVisibilityManager(server.appContext)
         
-        // Trigger cache refresh on first request if cache is empty
-        if (page == 1 && server.allVideoFiles.isEmpty() && !server.isScanning.get()) {
+        // OPTIMIZATION: Always trigger scan if cache is empty and not already scanning
+        // This ensures we start discovering videos immediately on first request
+        if (server.allVideoFiles.isEmpty() && !server.isScanning.get()) {
             server.refreshCache() // Returns immediately, scan runs in background
         }
         
-        // Snapshot of current list
+        // CRITICAL: Return immediately with whatever we have (even if empty during scanning)
+        // The client will poll again if scanning is true to get newly discovered videos
         val currentVideos = synchronized(server.allVideoFiles) { server.allVideoFiles.toList() }
         
         val filteredVideos = currentVideos.filter { 

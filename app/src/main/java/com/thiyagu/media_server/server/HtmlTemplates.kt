@@ -626,6 +626,32 @@ object HtmlTemplates {
                             document.getElementById('loading-indicator').classList.remove('hidden');
 
                             try {
+                                // OPTIMIZATION: Use metadata cache for instant loading
+                                if (this.state.mode === 'flat' && this.state.page === 1) {
+                                    try {
+                                        const cacheRes = await fetch('/api/cache');
+                                        const cacheData = await cacheRes.json();
+                                        
+                                        if (cacheData.videos && cacheData.videos.length > 0) {
+                                            // Display all videos from cache immediately
+                                            this.renderItems(cacheData.videos, 'flat', true);
+                                            this.updateVideoCount(cacheData.totalVideos, false);
+                                            
+                                            // Save to IndexedDB for offline access
+                                            await this.cache.saveVideos(cacheData.videos);
+                                            
+                                            this.state.hasMore = false; // All loaded from cache
+                                            this.state.isLoading = false;
+                                            document.getElementById('loading-indicator').classList.add('hidden');
+                                            return;
+                                        }
+                                    } catch (cacheError) {
+                                        console.warn('Cache fetch failed, falling back to paginated API:', cacheError);
+                                        // Fall through to normal pagination
+                                    }
+                                }
+                                
+                                // Fallback: Normal paginated loading (for tree mode or if cache fails)
                                 const url = this.state.mode === 'tree' 
                                     ? `/api/tree?path=${'$'}{encodeURIComponent(this.state.path)}&page=${'$'}{this.state.page}`
                                     : `/api/videos?page=${'$'}{this.state.page}`;
@@ -668,9 +694,9 @@ object HtmlTemplates {
                                     }
                                 }
                                 
-                                // Poll if scanning
+                                // OPTIMIZATION: Poll faster during scanning for quicker updates
                                 if (scanning) {
-                                    setTimeout(() => this.loadPage(), 1000);
+                                    setTimeout(() => this.loadPage(), 500);
                                 }
                                 
                             } catch (e) {
@@ -777,24 +803,37 @@ object HtmlTemplates {
                         },
 
                         startPolling() {
-                            setInterval(async () => {
+                            // OPTIMIZATION: Smart polling - faster during scanning, slower when idle
+                            let pollInterval = 2000; // Start with 2s
+                            
+                            const poll = async () => {
                                 if (document.hidden || !navigator.onLine) return;
                                 try {
                                     const res = await fetch('/api/status');
                                     const status = await res.json();
                                     const bar = document.getElementById('scan-progress-container');
+                                    
                                     if (status.scanning) {
+                                        pollInterval = 500; // Fast polling during scan
                                         bar.classList.remove('opacity-0', '-translate-y-4');
                                         document.getElementById('scan-count').textContent = status.count;
-                                        // Live Refresh for Flat Mode
+                                        
+                                        // Live Refresh for Flat Mode - load new videos as they're discovered
                                         if (this.state.mode === 'flat' && !this.state.isLoading) {
                                             this.loadPage(); // Progressive load next batch
                                         }
                                     } else {
+                                        pollInterval = 2000; // Slow polling when idle
                                         bar.classList.add('opacity-0', '-translate-y-4');
                                     }
                                 } catch(e){}
-                            }, 2000);
+                                
+                                // Schedule next poll with current interval
+                                setTimeout(poll, pollInterval);
+                            };
+                            
+                            // Start polling
+                            poll();
                         }
                     };
 

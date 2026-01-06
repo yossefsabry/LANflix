@@ -50,6 +50,9 @@ class KtorMediaStreamingServer(
 ) {
     private var server: ApplicationEngine? = null
     
+    // Metadata Cache Manager for fast video list retrieval
+    internal val cacheManager = com.thiyagu.media_server.cache.MetadataCacheManager(appContext, treeUri)
+    
     // Optimized Caches for O(1) Access and Thread Safety
     // filename -> DocumentFile
     internal val cachedFilesMap = ConcurrentHashMap<String, DocumentFile>()
@@ -93,8 +96,14 @@ class KtorMediaStreamingServer(
      */
     fun start() {
         scope.launch {
-            // Server starts immediately - no blocking scan
-            // Scanning will be triggered on first API request
+            // Build metadata cache on startup for instant client access
+            // And start watching for file changes
+            try {
+                cacheManager.refreshIfNeeded()
+                cacheManager.startWatching()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             
             try {
                 server = embeddedServer(Netty, port = port, configure = {
@@ -277,9 +286,12 @@ class KtorMediaStreamingServer(
                               }
                               
                               count++
-                              if (count % 20 == 0) {
-                                  scannedCount.set(foundaccumulator.size) // approximate
+                              // OPTIMIZATION: Update every 5 files instead of 20 for faster client feedback
+                              if (count % 5 == 0) {
+                                  scannedCount.set(foundaccumulator.size)
                                   _scanStatus.value = ScanStatus(true, foundaccumulator.size)
+                                  // Yield to allow API requests to be processed
+                                  kotlinx.coroutines.yield()
                               }
                           }
                      }
@@ -296,6 +308,7 @@ class KtorMediaStreamingServer(
      * Waits up to 1000ms for existing calls to finish, then hard stops after 5000ms.
      */
     fun stop() {
+        cacheManager.stopWatching()
         server?.stop(1000, 5000)
         scope.cancel()
     }

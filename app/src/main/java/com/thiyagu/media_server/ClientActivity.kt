@@ -354,7 +354,7 @@ class ClientActivity : AppCompatActivity() {
             
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Connection Timeout")
-                .setMessage("Unable to connect to server. Please check:\n\n• Server is running\n• Both devices are on the same Wi-Fi\n• Server IP address is correct")
+                .setMessage("Unable to connect to server. The server may be:\n\n• Still scanning your video library\n• Not running or unreachable\n• On a different Wi-Fi network\n\nTip: Large video libraries may take time to scan on first connection.")
                 .setPositiveButton("Retry") { _, _ ->
                     val ipAddress = etIpAddress.text.toString().trim()
                     if (ipAddress.isNotEmpty()) {
