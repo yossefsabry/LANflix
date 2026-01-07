@@ -12,6 +12,9 @@
     <color name="lanflix_primary">#FAC638</color>
     <color name="lanflix_primary_dark">#D4A526</color>
     
+    <color name="welcome_gradient_start">#3D2E0A</color>
+    <color name="welcome_gradient_end">#09090b</color>
+
     <color name="lanflix_bg">#09090b</color>
     <color name="lanflix_surface">#18181b</color>
     <color name="lanflix_surface_light">#27272a</color>

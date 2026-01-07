@@ -2,19 +2,12 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/welcome_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_welcome_gradient">
 
-    <!-- Background Image -->
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/bg_welcome"
-        android:scaleType="centerCrop"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+    <!-- Background Image Removed -->
 
     <!-- Scroll Content -->
     <ScrollView
@@ -29,12 +22,9 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="center_horizontal"
-            android:padding="24dp">
+            android:padding="32dp">
 
-            <!-- Spacer for top status bar area -->
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="48dp" />
+            <!-- Spacer removed for dynamic insets -->
 
             <!-- Branding Section -->
             <LinearLayout
@@ -146,15 +136,7 @@
                     app:iconGravity="end"
                     app:iconTint="@color/lanflix_bg"/>
 
-                <com.google.android.material.button.MaterialButton
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Scan Server QR Code"
-                    android:textColor="@color/lanflix_text_sub"
-                    app:backgroundTint="@android:color/transparent"
-                    app:rippleColor="@color/lanflix_surface_light"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"/>
+
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

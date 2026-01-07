@@ -47,7 +47,7 @@ class UserPreferences(private val context: Context) {
         
     val themeFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[THEME_KEY] ?: "dark"
+            preferences[THEME_KEY] ?: "system"
         }
         
     val subfolderScanningFlow: Flow<Boolean> = context.dataStore.data
@@ -89,7 +89,13 @@ class UserPreferences(private val context: Context) {
         }
     }
     
-    suspend fun clear() {
-        context.dataStore.edit { it.clear() }
+    suspend fun clearUserData() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(USERNAME_KEY)
+            preferences.remove(SELECTED_FOLDER_KEY)
+            preferences.remove(SERVER_NAME_KEY)
+            // Do NOT remove THEME_KEY, SUBFOLDER_SCANNING_KEY, HISTORY_RETENTION_KEY 
+            // as these are device/app settings, not user-session specific.
+        }
     }
 }

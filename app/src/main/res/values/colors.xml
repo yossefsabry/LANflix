@@ -14,6 +14,8 @@
     <color name="lanflix_primary_dark">#D4A526</color>
     
     <!-- Light Backgrounds -->
+    <color name="welcome_gradient_start">#FAC638</color>
+    <color name="welcome_gradient_end">#F4F4F5</color>
     <color name="lanflix_bg">#F4F4F5</color>         
     <color name="lanflix_surface">#FFFFFF</color>     
     <color name="lanflix_surface_light">#E4E4E7</color> 

@@ -12,6 +12,6 @@ class UserRepository(private val userPreferences: UserPreferences) {
     }
 
     suspend fun clear() {
-        userPreferences.clear()
+        userPreferences.clearUserData()
     }
 }

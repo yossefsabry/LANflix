@@ -299,6 +299,14 @@ object HtmlTemplates {
     </header>
 
     <main class="pt-24 pb-10 px-4 max-w-7xl mx-auto min-h-[80vh]">
+        <div class="relative mb-6">
+            <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-text-sub">search</span>
+            <input type="text" id="search-input" oninput="App.handleSearch(this.value)" placeholder="Search local videos..." 
+                class="w-full bg-surface-light border border-white/5 rounded-full py-3.5 pl-12 pr-12 text-sm placeholder:text-text-sub/50 focus:ring-1 focus:ring-primary focus:border-primary/50 transition-all outline-none text-text-main">
+            <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-white/5 text-text-sub" onclick="document.getElementById('search-input').value = ''; App.handleSearch('')">
+                <span class="material-symbols-rounded text-[20px]">close</span>
+            </button>
+        </div>
 """)
                                 
         // --- CONTENT GENERATION ---
@@ -374,15 +382,8 @@ object HtmlTemplates {
 
                 // Recently Added
                 write("""
-                <div class="relative mb-6">
-                    <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-text-sub">search</span>
-                    <input type="text" placeholder="Search local videos..." 
-                        class="w-full bg-surface-light border border-white/5 rounded-full py-3.5 pl-12 pr-12 text-sm placeholder:text-text-sub/50 focus:ring-1 focus:ring-primary focus:border-primary/50 transition-all outline-none text-text-main">
-                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-white/5 text-text-sub">
-                        <span class="material-symbols-rounded text-[20px]">tune</span>
-                    </button>
-                </div>
-                <section>
+                
+                <section id="recently-added-section">
                      <div class="flex items-center justify-between mb-4">
                           <h2 class="text-lg font-bold">Recently Added</h2>
                           <button onclick="document.getElementById('all-videos').scrollIntoView({behavior: 'smooth'})" class="text-xs font-bold text-primary">See All</button>
@@ -414,7 +415,7 @@ object HtmlTemplates {
                 
                 // All Videos - Progressive Loading
                 write("""
-                <section class="mt-6">
+                <section id="all-videos-section" class="mt-6">
                     <div class="flex items-center justify-between mb-4">
                          <h2 id="all-videos" class="text-lg font-bold">All Videos</h2>
                          <span id="video-count" class="text-xs text-text-sub/60 font-medium">Loading...</span>
@@ -466,7 +467,13 @@ object HtmlTemplates {
                             allVideos: [], // Full Cached List
                             isLoading: false,
                             hasMore: true,
-                            virtualScroll: false
+                            allVideos: [], // Full Cached List
+                            isLoading: false,
+                            hasMore: true,
+                            virtualScroll: false,
+                            isSearching: false,
+                            searchQuery: '',
+                            searchTimeout: null
                         },
 
                         // IndexedDB Cache Wrapper
@@ -687,6 +694,7 @@ object HtmlTemplates {
 
                         async loadPage() {
                             if (this.state.isLoading) return;
+                            if (this.state.isSearching) return; // Prevent pagination interference during search
                             this.state.isLoading = true;
                             document.getElementById('loading-indicator').classList.remove('hidden');
 
@@ -765,7 +773,8 @@ object HtmlTemplates {
                                         }
                                         
                                         // Update Recently Added (Client Logic)
-                                        if (this.state.page === 2) { // Logic: only render recents on first load (page incremented to 2)
+                                        // Fix: Run on first page load (offset 0) regardless of library size or pagination state
+                                        if (offset === 0) {
                                              this.renderRecentlyAdded();
                                         }
                                         
@@ -834,13 +843,14 @@ object HtmlTemplates {
                                     </a>`;
                                 } else {
                                      // Video
-                                     const path = this.state.path ? `${'$'}{this.state.path}/${'$'}{name}` : name;
+                                     // Fix: Prioritize explicit path from cache to support nested files in Flat View
+                                     const path = item.path || (this.state.path ? `${'$'}{this.state.path}/${'$'}{name}` : name);
                                      // Use API thumb route
                                      const thumbUrl = `/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}`;
                                      
                                      el.innerHTML = `<a href="/${'$'}{name}" data-name="${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform ${'$'}{animate ? 'animate-in fade-in zoom-in duration-300' : ''}">
                                           <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
-                                              <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" />
+                                              <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%231F1F1F%22%2F%3E%3Cpath%20d%3D%22M18%204l2%204h-3l-2-4h-2l2%204h-3l-2-4H8l2%204H7L5%204H4c-1.1%200-1.99.9-1.99%202L2%2018c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V4h-4z%22%20fill%3D%22%23333%22%2F%3E%3Cpath%20d%3D%22M12%2014l-2-3h4l-2%203z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E';this.classList.remove('opacity-0');" />
                                               <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
                                                   <span class="material-symbols-rounded text-3xl text-text-sub/20 group-hover:text-primary transition-colors">movie</span>
                                               </div>
@@ -937,6 +947,81 @@ object HtmlTemplates {
                             });
                         },
                         
+                        handleSearch(query) {
+                           if (this.state.searchTimeout) clearTimeout(this.state.searchTimeout);
+                           this.state.searchQuery = query;
+                           this.state.searchTimeout = setTimeout(() => {
+                               this.performSearch(query);
+                           }, 300);
+                        },
+
+                        performSearch(query) {
+                            const trimmed = query.trim().toLowerCase();
+                            const treeSection = document.getElementById('tree-section');
+                            const videoSection = document.getElementById('video-section');
+                            const recentSection = document.getElementById('recently-added-section');
+                            const allVideosSection = document.getElementById('all-videos-section');
+                            const allVideosHeader = document.getElementById('all-videos');
+                            const container = document.getElementById('video-grid');
+                            const countEl = document.getElementById('video-count');
+                            
+                            if (!trimmed) {
+                                // Restore Mode
+                                this.state.isSearching = false;
+                                if (this.state.mode === 'tree') {
+                                    if(treeSection) treeSection.classList.remove('hidden');
+                                    if(videoSection) videoSection.classList.add('hidden');
+                                } else {
+                                    if(treeSection) treeSection.classList.add('hidden');
+                                    if(videoSection) videoSection.classList.remove('hidden');
+                                    if(recentSection) recentSection.classList.remove('hidden');
+                                    if(allVideosHeader) allVideosHeader.textContent = "All Videos";
+                                    
+                                    // Trigger reload to restore list state
+                                    this.state.page = 1;
+                                    this.state.items = [];
+                                    if(container) container.innerHTML = '';
+                                    this.loadPage();
+                                }
+                                return;
+                            }
+                            
+                            // Search Mode
+                            this.state.isSearching = true;
+                            if (this.state.mode === 'tree') {
+                                if(treeSection) treeSection.classList.add('hidden');
+                                if(videoSection) videoSection.classList.remove('hidden');
+                            }
+                            
+                            // Hide Recents
+                            if(recentSection) recentSection.classList.add('hidden');
+                            if(allVideosHeader) allVideosHeader.textContent = `Search Results: "${'$'}{query}"`;
+                            
+                            // Filter
+                            const results = this.state.allVideos.filter(v => v.name.toLowerCase().includes(trimmed));
+                            
+                            // Clear Container
+                            if(container) container.innerHTML = '';
+                            
+                            // Render Results (render logic duplicates renderItems but forces flat)
+                            // We can use renderItems but it appends. We cleared, so appending is fine.
+                            // Limit results for performance
+                            const limitedResults = results.slice(0, 100);
+                            this.renderItems(limitedResults, 'flat', true);
+                            
+                            // Update Count
+                            if(countEl) countEl.textContent = `${'$'}{results.length} Results`;
+                            
+                            if (limitedResults.length === 0) {
+                                if(container) {
+                                    container.innerHTML = `<div class="col-span-full py-20 flex flex-col items-center justify-center text-text-sub opacity-60">
+                                        <span class="material-symbols-rounded text-6xl mb-4">search_off</span>
+                                        <p class="text-lg font-medium">No results found</p>
+                                    </div>`;
+                                }
+                            }
+                        },
+                        
                         renderRecentlyAdded() {
                             const container = document.getElementById('recently-added-grid');
                             if (!container) return;
@@ -946,7 +1031,7 @@ object HtmlTemplates {
                             
                             const recents = [...this.state.allVideos]
                                 .sort((a, b) => b.lastModified - a.lastModified)
-                                .slice(0, 4);
+                                .slice(0, 5);
                                 
                             if (recents.length === 0) {
                                 container.innerHTML = '<div class="w-full text-center py-8 text-text-sub text-sm">No recent videos</div>';
@@ -957,12 +1042,13 @@ object HtmlTemplates {
                             
                             recents.forEach(video => {
                                 const name = video.name;
+                                const path = video.path || name;
                                 const size = Math.round(video.size || 0);
                                 const el = document.createElement('a');
                                 el.href = `/${'$'}{name}`;
                                 el.className = "flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5";
                                 el.innerHTML = `
-                                    <img data-src="/api/thumbnail/${'$'}{encodeURIComponent(name)}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
+                                    <img data-src="/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%231F1F1F%22%2F%3E%3Cpath%20d%3D%22M18%204l2%204h-3l-2-4h-2l2%204h-3l-2-4H8l2%204H7L5%204H4c-1.1%200-1.99.9-1.99%202L2%2018c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V4h-4z%22%20fill%3D%22%23333%22%2F%3E%3Cpath%20d%3D%22M12%2014l-2-3h4l-2%203z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E';this.classList.remove('opacity-0');" />
                                     <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                         <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-white text-3xl">play_arrow</span></div>
                                     </div>
@@ -984,20 +1070,34 @@ object HtmlTemplates {
                         },
 
                         startPolling() {
-                            // OPTIMIZATION: Smart polling - faster during scanning, slower when idle
-                            let pollInterval = 2000; // Start with 2s
+                            let pollInterval = 2000;
                             
                             const poll = async () => {
-                                if (document.hidden || !navigator.onLine) return;
+                                if (document.hidden || !navigator.onLine) {
+                                    setTimeout(poll, 5000);
+                                    return;
+                                }
+                                
+                                // Pause polling while searching to prevent UI jitter/overhead
+                                if (this.state.isSearching) {
+                                    setTimeout(poll, 3000);
+                                    return;
+                                }
+
                                 try {
                                     const res = await fetch('/api/status');
                                     const status = await res.json();
                                     const bar = document.getElementById('scan-progress-container');
                                     
+                                    // Update state
+                                    this.state.scanning = status.scanning;
+                                    
                                     if (status.scanning) {
                                         pollInterval = 500; // Fast polling during scan
-                                        bar.classList.remove('opacity-0', '-translate-y-4');
-                                        document.getElementById('scan-count').textContent = status.count;
+                                        if (bar) {
+                                            bar.classList.remove('opacity-0', '-translate-y-4');
+                                            document.getElementById('scan-count').textContent = status.count;
+                                        }
                                         
                                         // Live Refresh for Flat Mode - load new videos as they're discovered
                                         if (this.state.mode === 'flat' && !this.state.isLoading) {
@@ -1005,11 +1105,11 @@ object HtmlTemplates {
                                         }
                                     } else {
                                         pollInterval = 2000; // Slow polling when idle
-                                        bar.classList.add('opacity-0', '-translate-y-4');
+                                        if (bar) bar.classList.add('opacity-0', '-translate-y-4');
                                     }
                                 } catch(e){}
                                 
-                                // Schedule next poll with current interval
+                                // Schedule next poll
                                 setTimeout(poll, pollInterval);
                             };
                             
@@ -1017,6 +1117,9 @@ object HtmlTemplates {
                             poll();
                         }
                     };
+                    
+                    // Expose App to global scope for inline event handlers
+                    window.App = App;
 
                     // Intersection Sentinel for Infinite Scroll
                     const sentinelCallback = (entries) => {

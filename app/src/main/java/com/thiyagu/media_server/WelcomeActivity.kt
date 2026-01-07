@@ -32,6 +32,31 @@ class WelcomeActivity : AppCompatActivity() {
         
         setContentView(R.layout.activity_welcome)
 
+        // Handle Window Insets
+        // Handle Window Insets
+        val rootView = findViewById<View>(R.id.welcome_root)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
+            val insets = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            
+            // Apply insets to the scrolling content container, preserving its original padding
+            // We want the ScrollView to span the whole screen (so you can scroll behind bars), 
+            // but the content insider needs to be padded.
+            
+            val contentContainer = findViewById<View>(R.id.branding_content).parent as View // The LinearLayout inside ScrollView
+            
+            // Original padding is 32dp
+            val originalPadding = resources.getDimensionPixelSize(R.dimen.welcome_screen_padding)
+            
+            contentContainer.setPadding(
+                originalPadding + insets.left, 
+                originalPadding + insets.top, // Add top inset to top padding
+                originalPadding + insets.right, 
+                originalPadding + insets.bottom // Add bottom inset to bottom padding
+            )
+            
+            androidx.core.view.WindowInsetsCompat.CONSUMED
+        }
+
         val etUsername = findViewById<TextInputEditText>(R.id.et_username)
         val btnGetStarted = findViewById<MaterialButton>(R.id.btn_get_started)
 
