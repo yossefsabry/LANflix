@@ -21,4 +21,19 @@
         android:layout_gravity="center"
         android:visibility="gone" />
 
+    <TextView
+        android:id="@+id/debug_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="16dp"
+        android:textColor="#00FF00"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:background="#80000000"
+        android:visibility="gone" />
+
 </FrameLayout>

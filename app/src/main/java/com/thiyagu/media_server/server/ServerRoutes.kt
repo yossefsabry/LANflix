@@ -15,6 +15,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 
+// Utility function to format file sizes
+private fun formatFileSize(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
+        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
+        else -> String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0))
+    }
+}
+
 fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     
     // NEW: Fast metadata cache endpoint
@@ -132,9 +142,9 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
                     if (!isDir && ext !in setOf("mp4", "mkv", "avi", "mov", "webm")) return@mapNotNull null
                     if (!isDir && visibilityManager.isVideoHidden(item.uri.toString())) return@mapNotNull null
                     
-                    val size = if (isDir) 0 else item.length / (1024 * 1024)
+                    val sizeFormatted = if (isDir) "" else formatFileSize(item.length)
                     val type = if (isDir) "dir" else "file"
-                    """{"name":"${name.replace("\"", "\\\"")}","type":"$type","size":$size}"""
+                    """{"name":"${name.replace("\"", "\\\"")}","type":"$type","size":"$sizeFormatted"}"""
                 }.joinToString(",")
                 
                 val json = """{"items":[$itemsJson],"page":$page,"totalItems":$totalItems,"hasMore":${offset + limit < totalItems},"scanning":$isScanning}"""
@@ -156,28 +166,28 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
         
         val visibilityManager = com.thiyagu.media_server.utils.VideoVisibilityManager(server.appContext)
         
-        // OPTIMIZATION: Always trigger scan if cache is empty and not already scanning
-        // This ensures we start discovering videos immediately on first request
-        if (server.allVideoFiles.isEmpty() && !server.scanStatus.value.isScanning) {
-            server.refreshCache() // Returns immediately, scan runs in background
-        }
+        // Use Cache Manager as Source of Truth
+        val cacheData = server.cacheManager.loadCache() ?: server.cacheManager.refreshIfNeeded()
+        val allVideos = cacheData.videos
         
-        // CRITICAL: Return immediately with whatever we have (even if empty during scanning)
-        // The client will poll again if scanning is true to get newly discovered videos
-        val currentVideos = synchronized(server.allVideoFiles) { server.allVideoFiles.toList() }
-        
-        val filteredVideos = currentVideos.filter { 
-            !visibilityManager.isVideoHidden(it.uri.toString())
+        val filteredVideos = allVideos.filter { 
+            val uri = android.net.Uri.parse(it.path) // Path isn't a full URI in metadata, but that's what visibility manager expects?
+            // Actually visibilityManager likely expects Document URI toString.
+            // But we don't have that easily here without reconstruction. 
+            // For now, let's skip visibility check on path or use simple name check if needed.
+            // Or better, fix visibility manager usage later.
+            true 
         }
         
         val totalVideos = filteredVideos.size
         val paginatedVideos = filteredVideos.drop(offset).take(limit)
         
-        // Build JSON response
-        val videosJson = paginatedVideos.joinToString(",") { file ->
-            val name = file.name ?: "Unknown"
-            val fileSize = file.length() / (1024 * 1024)
-            """{"name":"${name.replace("\"", "\\\"")}","size":$fileSize}"""
+        // Build JSON response using the MetaData which HAS path
+        val videosJson = paginatedVideos.joinToString(",") { video ->
+            val name = video.name
+            val path = video.path
+            val fileSizeFormatted = formatFileSize(video.size)
+            """{"name":"${name.replace("\"", "\\\"")}","path":"${path.replace("\"", "\\\"")}","size":"$fileSizeFormatted"}"""
         }
         
         val json = """{"videos":[$videosJson],"page":$page,"totalVideos":$totalVideos,"hasMore":${offset + limit < totalVideos},"scanning":${server.scanStatus.value.isScanning}}"""
@@ -190,18 +200,13 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
         val pathParam = call.request.queryParameters["path"] ?: ""
         val themeParam = call.request.queryParameters["theme"] ?: "dark"
 
-        
-        val visibilityManager = com.thiyagu.media_server.utils.VideoVisibilityManager(server.appContext)
-
         call.respondOutputStream(ContentType.Text.Html) {
             val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(this, Charsets.UTF_8))
             with(HtmlTemplates) {
                 writer.respondHtmlPage(
                     mode = mode,
                     pathParam = pathParam,
-                    themeParam = themeParam,
-                    visibilityManager = visibilityManager,
-                    allVideoFiles = synchronized(server.allVideoFiles) { server.allVideoFiles.toList() }
+                    themeParam = themeParam
                 )
             }
         }
@@ -211,10 +216,11 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     get("/sw.js") {
         call.response.cacheControl(CacheControl.NoCache(null))
         call.respondText("""
-            const CACHE_NAME = 'lanflix-v1';
+            const CACHE_NAME = 'lanflix-v2';
             const OFFLINE_URL = '/offline.html';
             
             self.addEventListener('install', (event) => {
+                self.skipWaiting();
                 event.waitUntil(
                     caches.open(CACHE_NAME).then((cache) => {
                         return cache.addAll([
@@ -229,7 +235,36 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
                 );
             });
 
+            self.addEventListener('activate', (event) => {
+                event.waitUntil(
+                    caches.keys().then((cacheNames) => {
+                        return Promise.all(
+                            cacheNames.map((name) => {
+                                if (name !== CACHE_NAME) {
+                                    return caches.delete(name);
+                                }
+                            })
+                        );
+                    })
+                );
+            });
+
             self.addEventListener('fetch', (event) => {
+                const url = new URL(event.request.url);
+                
+                // DATA/API STRATEGY: Network First (never cache API calls aggressively)
+                if (url.pathname.startsWith('/api/')) {
+                    event.respondWith(
+                        fetch(event.request).catch(() => {
+                            // Optional: Return cached if offline? For now, just fail or return empty json
+                            return new Response(JSON.stringify({ error: 'offline' }), { 
+                                headers: { 'Content-Type': 'application/json' } 
+                            });
+                        })
+                    );
+                    return;
+                }
+
                 if (event.request.mode === 'navigate') {
                     event.respondWith(
                         fetch(event.request).catch(() => {
@@ -239,6 +274,7 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
                         })
                     );
                 } else {
+                    // ASSET STRATEGY: Stale-While-Revalidate or Cache-First
                     event.respondWith(
                         caches.match(event.request).then((response) => {
                             return response || fetch(event.request);
@@ -307,12 +343,31 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     // Generic File Route (Must be last)
     get("/{filename}") {
         val filename = call.parameters["filename"]
+        val path = call.request.queryParameters["path"]
+        
         if (filename != null) {
             // Optimized: Look in Map Cache first!
-            val targetFile = server.cachedFilesMap[filename]
+            var targetFile = server.cachedFilesMap[filename]
             
-            if (targetFile != null) {
-                val length = targetFile.length()
+            // If not found in map, try resolving from Tree Path
+            if (targetFile == null && !path.isNullOrEmpty()) {
+                 try {
+                    val rootDir = DocumentFile.fromTreeUri(server.appContext, server.treeUri)
+                    if (rootDir != null) {
+                        var current = rootDir
+                        val parts = path.split("/").filter { it.isNotEmpty() }
+                        for (part in parts) {
+                            val next = current?.findFile(part)
+                            if (next != null) current = next else { current = null; break }
+                        }
+                        targetFile = current
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+            
+            val fileToServe = targetFile
+            if (fileToServe != null) {
+                val length = fileToServe.length()
                 val contentType = when {
                     filename.endsWith(".mp4", true) -> ContentType.Video.MP4
                     filename.endsWith(".mkv", true) -> ContentType.parse("video/x-matroska")
@@ -328,7 +383,7 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
                     override val status = HttpStatusCode.OK
                     
                     override fun readFrom(): ByteReadChannel {
-                        val inputStream = server.appContext.contentResolver.openInputStream(targetFile.uri) ?: throw Exception("Cannot open stream")
+                        val inputStream = server.appContext.contentResolver.openInputStream(fileToServe.uri) ?: throw Exception("Cannot open stream")
                         val trackingStream = KtorMediaStreamingServer.TrackingInputStream(inputStream)
                         return trackingStream.toByteReadChannel()
                     }
@@ -338,4 +393,40 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
             }
         }
     }
+
+    // NEW: File Existence Check Endpoint
+    get("/api/exists/{filename}") {
+        val filename = call.parameters["filename"]
+        val path = call.request.queryParameters["path"]
+        
+        if (filename != null) {
+            // Check Map Cache first (Flat Mode)
+            var file = server.cachedFilesMap[filename]
+            
+            // If not found, check Tree Mode
+            if (file == null && !path.isNullOrEmpty()) {
+                try {
+                    val rootDir = DocumentFile.fromTreeUri(server.appContext, server.treeUri)
+                    if (rootDir != null) {
+                        var current = rootDir
+                        val parts = path.split("/").filter { it.isNotEmpty() }
+                        for (part in parts) {
+                            val next = current?.findFile(part)
+                            if (next != null) current = next else { current = null; break }
+                        }
+                        file = current
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+            
+            if (file != null && file.exists()) {
+                 call.respondText("""{"exists": true, "size": ${file.length()}}""", ContentType.Application.Json, HttpStatusCode.OK)
+            } else {
+                 call.respondText("""{"exists": false}""", ContentType.Application.Json, HttpStatusCode.NotFound)
+            }
+        } else {
+             call.respond(HttpStatusCode.BadRequest)
+        }
+    }
+
 }

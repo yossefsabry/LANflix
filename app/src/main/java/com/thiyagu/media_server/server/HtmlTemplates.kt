@@ -1,22 +1,13 @@
 package com.thiyagu.media_server.server
 
-import android.content.Context
-import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
-import com.thiyagu.media_server.utils.VideoVisibilityManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.Writer
-import java.io.File
 import java.net.URLEncoder
 
 object HtmlTemplates {
-    suspend fun Writer.respondHtmlPage(
+    fun Writer.respondHtmlPage(
         mode: String?,
         pathParam: String,
-        themeParam: String,
-        visibilityManager: VideoVisibilityManager,
-        allVideoFiles: List<DocumentFile>
+        themeParam: String
     ) {
         
         // --- HTML HEAD ---
@@ -308,152 +299,114 @@ object HtmlTemplates {
             </button>
         </div>
 """)
-                                
+                                 
         // --- CONTENT GENERATION ---
-        withContext(Dispatchers.IO) {
-            val isTree = (mode == "tree")
+        val isTree = (mode == "tree")
+        
+        // Tree Section Wrapper
+        write("""<div id="tree-section" class="${if(isTree) "" else "hidden"}">""")
+
+        if (isTree) {
+            // --- TREE BROWSER MODE (Client-Side) ---
             
-            // Tree Section Wrapper
-            write("""<div id="tree-section" class="${if(isTree) "" else "hidden"}">""")
-
-            if (isTree) {
-                // --- TREE BROWSER MODE ---
-                // Server-side rendering removed for performance (Progressive Loading)
-                
-                val breadcrumbs = mutableListOf<Pair<String, String>>()
-                breadcrumbs.add("Home" to "")
-                
-                if (pathParam.isNotEmpty()) {
-                    val parts = pathParam.split("/").filter { it.isNotEmpty() }
-                    var currentPath = ""
-                    for (part in parts) {
-                        currentPath += "/$part"
-                        breadcrumbs.add(part to currentPath)
-                    }
-                }
-
-                // Breadcrumbs
-                write("""<div id="breadcrumbs" class="flex items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap px-1">""")
-                breadcrumbs.forEachIndexed { index, (name, path) ->
-                    if (index > 0) write("""<span class="text-text-sub">/</span>""")
-                    val isLast = index == breadcrumbs.size - 1
-                    val color = if (isLast) "text-primary font-bold" else "text-text-sub hover:text-text-main"
-                    write("""<a href="/?mode=tree&path=$path" class="$color text-sm">$name</a>""")
-                }
-                write("""</div>""")
-
-                // Grid (Empty initially, populated by Client JS)
-                write("""<div id="tree-grid" class="grid grid-cols-2 gap-4"></div>""")
-                
-                // Loading Indicators & Sentinel for Infinite Scroll
-                write("""
-                    <div id="loading-indicator" class="hidden col-span-full flex justify-center py-8">
-                        <div class="flex items-center gap-3 text-text-sub">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                    </div>
-                    <div id="loading-sentinel"></div>
-                """)
-
-            } else {
-                 // Empty Tree Structure for SPA
-                 write("""
-                    <div id="breadcrumbs" class="flex items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap px-1"></div>
-                    <div id="tree-grid" class="grid grid-cols-2 gap-4"></div>
-                 """)
-            }
-            write("</div>") // Close Tree Section
-
-            // Video Section Wrapper
-            write("""<div id="video-section" class="${if (!isTree) "" else "hidden"}">""")
+            val breadcrumbs = mutableListOf<Pair<String, String>>()
+            breadcrumbs.add("Home" to "")
             
-            if (!isTree) {
-                // --- DEFAULT FLAT MODE (Live/Progressive) ---
-                
-                // No directory check needed here (scanning or cached)
-                // Simply show what we have so far
-                
-                val currentFiles = allVideoFiles.toList() // synchronized in caller if needed, but here we take what we have
-                val filteredFiles = currentFiles.filter { 
-                    !visibilityManager.isVideoHidden(it.uri.toString())
+            if (pathParam.isNotEmpty()) {
+                val parts = pathParam.split("/").filter { it.isNotEmpty() }
+                var currentPath = ""
+                for (part in parts) {
+                    currentPath += "/$part"
+                    breadcrumbs.add(part to currentPath)
                 }
-
-                val recentFiles = filteredFiles.sortedByDescending { it.lastModified() }.take(5)
-
-                // Recently Added
-                write("""
-                
-                <section id="recently-added-section">
-                     <div class="flex items-center justify-between mb-4">
-                          <h2 class="text-lg font-bold">Recently Added</h2>
-                          <button onclick="document.getElementById('all-videos').scrollIntoView({behavior: 'smooth'})" class="text-xs font-bold text-primary">See All</button>
-                     </div>
-                     <div id="recently-added-grid" class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">""")
-                
-                for (file in recentFiles) {
-                    val name = file.name ?: "Unknown"
-                    val fileSize = file.length() / (1024 * 1024)
-                    write("""
-                        <a href="/${name}" class="flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5">
-                            <img data-src="/api/thumbnail/${name}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"/>
-                            <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-white text-3xl">play_arrow</span></div>
-                            </div>
-                            <div class="absolute inset-0 flex items-center justify-center bg-white/5 -z-10"><span class="material-symbols-rounded text-4xl text-text-sub/20">movie</span></div>
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-                            <div class="absolute bottom-3 left-3 right-3">
-                                <h3 class="font-bold text-sm text-white line-clamp-1 mb-1">${name}</h3>
-                                <div class="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
-                                    <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded">NEW</span>
-                                    <span>${fileSize} MB</span>
-                                </div>
-                            </div>
-                        </a>""")
-                }
-                if (recentFiles.isEmpty()) write("""<div class="w-full text-center py-8 text-text-sub text-sm">No recent videos</div>""")
-                write("""</div></section>""")
-                
-                // All Videos - Progressive Loading
-                write("""
-                <section id="all-videos-section" class="mt-6">
-                    <div class="flex items-center justify-between mb-4">
-                         <h2 id="all-videos" class="text-lg font-bold">All Videos</h2>
-                         <span id="video-count" class="text-xs text-text-sub/60 font-medium">Loading...</span>
-                    </div>
-                    <div id="video-grid" class="auto-grid pb-8">
-                        <!-- Skeleton loaders for immediate feedback -->
-                        <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
-                            <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
-                           <div class="px-1 pb-1 space-y-2">
-                                <div class="h-4 bg-background rounded w-3/4"></div>
-                                <div class="h-3 bg-background rounded w-1/2"></div>
-                            </div>
-                        </div>
-                        <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
-                            <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
-                            <div class="px-1 pb-1 space-y-2">
-                                <div class="h-4 bg-background rounded w-3/4"></div>
-                                <div class="h-3 bg-background rounded w-1/2"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Loading indicator -->
-                    <div id="loading-indicator" class="hidden col-span-full flex justify-center py-8">
-                        <div class="flex items-center gap-3 text-text-sub">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                    </div>
-                    <!-- Sentinel for infinite scroll -->
-                    <div id="loading-sentinel"></div>
-                </section>""")
-            } else {
-                // Empty Video Structure for SPA
-                write("""<div id="video-grid" class="auto-grid"></div>""")
             }
-            write("</div>") // Close Video Section
 
+            // Breadcrumbs
+            write("""<div id="breadcrumbs" class="flex items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap px-1">""")
+            breadcrumbs.forEachIndexed { index, (name, path) ->
+                if (index > 0) write("""<span class="text-text-sub">/</span>""")
+                val isLast = index == breadcrumbs.size - 1
+                val color = if (isLast) "text-primary font-bold" else "text-text-sub hover:text-text-main"
+                write("""<a href="/?mode=tree&path=$path" class="$color text-sm">$name</a>""")
+            }
+            write("""</div>""")
+
+            // Grid (Empty initially, populated by Client JS)
+            write("""<div id="tree-grid" class="grid grid-cols-2 gap-4"></div>""")
+            
+            // Loading Indicators & Sentinel for Infinite Scroll
             write("""
-                <script>
+                <div id="loading-indicator" class="hidden col-span-full flex justify-center py-8">
+                    <div class="flex items-center gap-3 text-text-sub">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                </div>
+                <div id="loading-sentinel"></div>
+            """)
+
+        } else {
+             // Empty Tree Structure for SPA
+             write("""
+                <div id="breadcrumbs" class="flex items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap px-1"></div>
+                <div id="tree-grid" class="grid grid-cols-2 gap-4"></div>
+             """)
+        }
+        write("</div>") // Close Tree Section
+
+        // Video Section Wrapper
+        write("""<div id="video-section" class="${if (!isTree) "" else "hidden"}">""")
+        
+        // --- DEFAULT FLAT MODE (Pure Client-Side) ---
+        // No server-side rendering - just empty containers with skeleton loaders
+        // JavaScript will populate via /api/cache or /api/videos
+        
+        write("""
+        <section id="recently-added-section">
+             <div class="flex items-center justify-between mb-4">
+                  <h2 class="text-lg font-bold">Recently Added</h2>
+                  <button onclick="document.getElementById('all-videos').scrollIntoView({behavior: 'smooth'})" class="text-xs font-bold text-primary">See All</button>
+             </div>
+             <div id="recently-added-grid" class="flex gap-4 overflow-x-auto hide-scrollbar -mx-4 px-4 scroll-pl-4 snap-x">
+                 <!-- Will be populated by JavaScript -->
+             </div>
+        </section>
+        
+        <section id="all-videos-section" class="mt-6">
+            <div class="flex items-center justify-between mb-4">
+                 <h2 id="all-videos" class="text-lg font-bold">All Videos</h2>
+                 <span id="video-count" class="text-xs text-text-sub/60 font-medium">Loading...</span>
+            </div>
+            <div id="video-grid" class="auto-grid pb-8">
+                <!-- Skeleton loaders for immediate feedback -->
+                <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
+                    <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
+                    <div class="px-1 pb-1 space-y-2">
+                        <div class="h-4 bg-background rounded w-3/4"></div>
+                        <div class="h-3 bg-background rounded w-1/2"></div>
+                    </div>
+                </div>
+                <div class="skeleton-card animate-pulse bg-surface-light rounded-2xl p-2 border border-white/5">
+                    <div class="aspect-[4/3] rounded-xl bg-background mb-3"></div>
+                    <div class="px-1 pb-1 space-y-2">
+                        <div class="h-4 bg-background rounded w-3/4"></div>
+                        <div class="h-3 bg-background rounded w-1/2"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Loading indicator -->
+            <div id="loading-indicator" class="hidden col-span-full flex justify-center py-8">
+                <div class="flex items-center gap-3 text-text-sub">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            </div>
+            <!-- Sentinel for infinite scroll -->
+            <div id="loading-sentinel"></div>
+        </section>""")
+        
+        write("</div>") // Close Video Section
+
+        write("""
+            <script>
                     /**
                      * LANflix SPA Architecture
                      * Handles Client-Side Routing, Caching, and Progressive Loading.
@@ -848,7 +801,10 @@ object HtmlTemplates {
                                      // Use API thumb route
                                      const thumbUrl = `/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}`;
                                      
-                                     el.innerHTML = `<a href="/${'$'}{name}" data-name="${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform ${'$'}{animate ? 'animate-in fade-in zoom-in duration-300' : ''}">
+                                     // Fix: Include path in video link for robust server lookup
+                                     const videoUrl = `/${'$'}{name}?path=${'$'}{encodeURIComponent(path)}`;
+                                     
+                                     el.innerHTML = `<a href="${'$'}{videoUrl}" data-name="${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform ${'$'}{animate ? 'animate-in fade-in zoom-in duration-300' : ''}">
                                           <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
                                               <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%231F1F1F%22%2F%3E%3Cpath%20d%3D%22M18%204l2%204h-3l-2-4h-2l2%204h-3l-2-4H8l2%204H7L5%204H4c-1.1%200-1.99.9-1.99%202L2%2018c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V4h-4z%22%20fill%3D%22%23333%22%2F%3E%3Cpath%20d%3D%22M12%2014l-2-3h4l-2%203z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E';this.classList.remove('opacity-0');" />
                                               <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface">
@@ -1045,7 +1001,8 @@ object HtmlTemplates {
                                 const path = video.path || name;
                                 const size = Math.round(video.size || 0);
                                 const el = document.createElement('a');
-                                el.href = `/${'$'}{name}`;
+                                // Fix: Include path in video link
+                                el.href = `/${'$'}{name}?path=${'$'}{encodeURIComponent(path)}`;
                                 el.className = "flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5";
                                 el.innerHTML = `
                                     <img data-src="/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%231F1F1F%22%2F%3E%3Cpath%20d%3D%22M18%204l2%204h-3l-2-4h-2l2%204h-3l-2-4H8l2%204H7L5%204H4c-1.1%200-1.99.9-1.99%202L2%2018c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V4h-4z%22%20fill%3D%22%23333%22%2F%3E%3Cpath%20d%3D%22M12%2014l-2-3h4l-2%203z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E';this.classList.remove('opacity-0');" />
@@ -1135,7 +1092,7 @@ object HtmlTemplates {
                         if (s) sentinelObserver.observe(s);
                     });
                 </script>""")
-        }
+
 
         // --- FOOTER ---
         write("""

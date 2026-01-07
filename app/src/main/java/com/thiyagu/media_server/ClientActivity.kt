@@ -110,10 +110,49 @@ class ClientActivity : AppCompatActivity() {
                 
                 // Allow internal app navigation BEFORE security check
                 if (url.endsWith(".mp4", true) || url.endsWith(".mkv", true) || url.endsWith(".avi", true) || url.endsWith(".mov", true) || url.endsWith(".webm", true)) {
-                    // Handle Video: Launch Native Player
-                    val intent = android.content.Intent(this@ClientActivity, VideoPlayerActivity::class.java)
-                    intent.putExtra("VIDEO_URL", url)
-                    startActivity(intent)
+                    // Handle Video: Pre-check existence then Launch Native Player
+                    val filename = android.net.Uri.parse(url).lastPathSegment
+                    // Extract path query param if tree mode
+                    val pathParam = android.net.Uri.parse(url).getQueryParameter("path")
+                    val query = if (pathParam != null) "?path=${java.net.URLEncoder.encode(pathParam, "UTF-8")}" else ""
+                    
+                    // Show Loading
+                    loadingOverlay.visibility = View.VISIBLE
+                    
+                    lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val checkUrl = "http://${android.net.Uri.parse(url).host}:8888/api/exists/$filename$query"
+                            val connection = java.net.URL(checkUrl).openConnection() as java.net.HttpURLConnection
+                            connection.requestMethod = "GET"
+                            connection.connectTimeout = 5000
+                            connection.readTimeout = 5000
+                            
+                            val responseCode = connection.responseCode
+                            
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                loadingOverlay.visibility = View.GONE
+                                
+                                if (responseCode == 200) {
+                                    // File Exists! Launch Player
+                                    val intent = android.content.Intent(this@ClientActivity, VideoPlayerActivity::class.java)
+                                    intent.putExtra("VIDEO_URL", url)
+                                    startActivity(intent)
+                                } else {
+                                    // File Not Found
+                                    androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
+                                        .setTitle("Video Not Found")
+                                        .setMessage("The video file could not be found on the server. It might have been moved, deleted, or the server is still scanning.")
+                                        .setPositiveButton("OK", null)
+                                        .show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                loadingOverlay.visibility = View.GONE
+                                Toast.makeText(this@ClientActivity, "Error calling server: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                     return true
                 }
                 
