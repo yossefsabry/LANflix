@@ -1,0 +1,546 @@
+[
+  {
+    "id": "TC001",
+    "title": "Initial User Setup and Home Screen Navigation",
+    "description": "Verify that upon first launch, the user is prompted to set a username and, upon completion, is directed to the home screen.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Launch the LANflix app for the first time."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the app prompts for username input."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid username and confirm."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify navigation to the home screen after username setup."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Server Mode: Folder Selection via Storage Access Framework (SAF)",
+    "description": "Validate that the user can select a local media folder using SAF and the folder's content is accessible.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Server mode."
+      },
+      {
+        "type": "action",
+        "description": "Invoke folder selection through SAF."
+      },
+      {
+        "type": "action",
+        "description": "Select a media folder containing video files."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the selected folder is accepted and media files are indexed."
+      },
+      {
+        "type": "action",
+        "description": "Select an empty folder."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that user is informed no media files were found."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Server Mode: Start and Maintain Embedded Ktor HTTP Server",
+    "description": "Confirm the embedded Ktor HTTP server starts on port 8888 and continues running including in background.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start server after folder selection."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify server listens on port 8888."
+      },
+      {
+        "type": "assertion",
+        "description": "Check server status displays uptime, bandwidth, and active connections."
+      },
+      {
+        "type": "action",
+        "description": "Move app to background during streaming."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure server remains accessible and running via foreground service."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Server Mode: Media Library Browsing and Metadata Caching",
+    "description": "Verify that media files and metadata are cached and that browsing the media library is fast and accurate.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "After starting server, browse media library on client device via server WebView UI."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that video list matches media folder content accurately."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that thumbnails are generated and cached, displaying correctly in the UI."
+      },
+      {
+        "type": "action",
+        "description": "Add new video file to media folder on server device."
+      },
+      {
+        "type": "action",
+        "description": "Trigger metadata cache rebuild in background."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new video appears in media library eventually with generated thumbnail."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Client Mode: Automatic Server Discovery via NSD",
+    "description": "Validate that client devices automatically discover available servers on the local network using NSD with correct service name.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start server with NSD broadcasting enabled."
+      },
+      {
+        "type": "action",
+        "description": "On client device, open Client mode and wait for server discovery."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the server appears in the discovered servers list with correct server name."
+      },
+      {
+        "type": "action",
+        "description": "Disable network on server and verify client correctly stops discovering the server."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Client Mode: Manual IP Connection to Server",
+    "description": "Ensure client can manually connect to server by inputting IP address and browse media content.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Obtain server IP address."
+      },
+      {
+        "type": "action",
+        "description": "On client, enter server IP address manually."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful connection and media library loads correctly."
+      },
+      {
+        "type": "action",
+        "description": "Input invalid IP address format."
+      },
+      {
+        "type": "assertion",
+        "description": "Check for appropriate error message indicating invalid IP."
+      },
+      {
+        "type": "action",
+        "description": "Input unreachable IP address."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that connection failure is handled gracefully with informative message."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Client Mode: WebView Browsing and Strict Host Enforcement",
+    "description": "Test that client WebView loads server content properly and strict host enforcement prevents unauthorized content or injection.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Connect client to server via NSD or manual IP."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify WebView loads only content from the authenticated server host."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to load content from different or unauthorized hosts in WebView."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure the app blocks or refuses to load unauthorized content."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Playback: Launch Video with Native ExoPlayer from Client",
+    "description": "Confirm that tapping a video in client WebView opens native ExoPlayer with video playback starting properly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Browse media library in client WebView."
+      },
+      {
+        "type": "action",
+        "description": "Tap a video item."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ExoPlayer opens and starts playback of selected video."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure video buffering and playback is smooth without errors."
+      },
+      {
+        "type": "action",
+        "description": "Pause playback and close player."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Playback: Resume Playback from Last Watched Position",
+    "description": "Verify that playback resumes from the last known position after app and player restarts.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start video playback and watch up to a certain point."
+      },
+      {
+        "type": "action",
+        "description": "Pause playback and exit player."
+      },
+      {
+        "type": "action",
+        "description": "Close and restart LANflix app."
+      },
+      {
+        "type": "action",
+        "description": "Launch the same video again."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that playback resumes from last watched position."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Playback: Playback History Retention Settings",
+    "description": "Test that playback history is stored in Room database and respected according to user-configured retention settings.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Play several videos to generate history entries."
+      },
+      {
+        "type": "action",
+        "description": "Change playback history retention setting to '1 week'."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify history older than 1 week is deleted or not displayed."
+      },
+      {
+        "type": "action",
+        "description": "Change retention to 'indefinite'."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all history entries are retained."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Settings: Theme Selection Persistence",
+    "description": "Confirm that the selected UI theme (light/dark) persists across app restarts and updates UI accordingly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to settings."
+      },
+      {
+        "type": "action",
+        "description": "Change theme to dark mode."
+      },
+      {
+        "type": "action",
+        "description": "Restart application."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify theme remains dark and UI is updated accordingly."
+      },
+      {
+        "type": "action",
+        "description": "Change theme back to light mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify theme changes immediately and persists after app restart."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Settings: Server Name Configuration Persistence",
+    "description": "Ensure that server name configured by the user is saved and displayed properly throughout the app and on the network.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Server mode settings."
+      },
+      {
+        "type": "action",
+        "description": "Change server name to a custom name."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that new server name is shown in app UI and NSD broadcasts."
+      },
+      {
+        "type": "action",
+        "description": "Restart the app."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify server name persists and is used again."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Privacy & Security Info Display Validation",
+    "description": "Check that Privacy and Security information screen displays correct details regarding local data storage and lack of external network usage.",
+    "category": "functional",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open the Privacy & Security info screen in settings."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that information clearly explains data stays local and no cloud access occurs."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Network Status Overview Accuracy",
+    "description": "Validate that the Network Info screen accurately shows network connection status and related information.",
+    "category": "functional",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open Network Info screen."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that local IP addresses, connection status, and network type are accurate."
+      },
+      {
+        "type": "action",
+        "description": "Disconnect network."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify network status updates accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "No External Network Access Enforcement",
+    "description": "Verify that LANflix app performs no communication with external servers; all network operations stay constrained within the local network.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Monitor app network traffic during normal operation (server and client modes)."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm no outgoing traffic to non-local IP addresses is observed."
+      },
+      {
+        "type": "action",
+        "description": "Attempt streaming and discovery with isolated local network."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify app functions without requiring internet connection."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Error Handling: Invalid Folder Permissions in Server Mode",
+    "description": "Verify app behavior when user selects a folder without required permissions to access video files.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to select a folder restricted by permissions."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify app detects lack of permissions and prompts user accordingly."
+      },
+      {
+        "type": "action",
+        "description": "Try starting server without valid access."
+      },
+      {
+        "type": "assertion",
+        "description": "Check app prevents server start and shows appropriate error message."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Error Handling: Server Unavailable During Client Discovery",
+    "description": "Test client behavior when a server disappears after being discovered via NSD.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Discover server on client device."
+      },
+      {
+        "type": "action",
+        "description": "Turn off server device or stop server."
+      },
+      {
+        "type": "action",
+        "description": "Try to connect to the previously discovered server."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify client shows appropriate error or timeout message."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Error Handling: Playback Failure with Corrupted Video",
+    "description": "Ensure the app handles corrupted or unsupported video files gracefully during playback.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add a corrupted or unsupported video file to the media folder on server."
+      },
+      {
+        "type": "action",
+        "description": "Browse media library on client and attempt to play corrupted video."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that playback error is displayed and app remains stable."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Edge Case: Large Media Library Performance",
+    "description": "Test server and client performance and UI responsiveness with a very large number of video files.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select a media folder containing thousands of video files."
+      },
+      {
+        "type": "action",
+        "description": "Start server and allow metadata caching to complete."
+      },
+      {
+        "type": "action",
+        "description": "Browse media library from client device."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI remains responsive and media files load within acceptable latency."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Edge Case: Simultaneous Multiple Clients Connecting to Server",
+    "description": "Validate server stability and bandwidth reporting when multiple clients connect and request streaming simultaneously.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start server with media folder selected."
+      },
+      {
+        "type": "action",
+        "description": "Connect multiple client devices to the server concurrently (5+ clients)."
+      },
+      {
+        "type": "action",
+        "description": "Initiate video playback on each client simultaneously."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify server remains stable, active connections are tracked correctly, and bandwidth usage metrics update."
+      }
+    ]
+  }
+]

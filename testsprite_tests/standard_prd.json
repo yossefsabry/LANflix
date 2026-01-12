@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "project": "LANflix",
+    "date": "2026-01-09",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "LANflix is an Android application designed for local network media streaming, operating in two modes: Server for hosting local video files via an embedded HTTP server, and Client for discovering and connecting to these servers to stream videos within a local network environment, ensuring privacy by keeping all data local.",
+  "core_goals": [
+    "Enable a device to host and share a folder of video files over LAN through an embedded HTTP server.",
+    "Allow client devices to discover servers automatically via Network Service Discovery (NSD) or manually connect via IP to stream videos.",
+    "Deliver a modern and seamless video playback experience, featuring resume playback history and user-controllable retention settings.",
+    "Ensure all operations and data remain local to the network with no external cloud access to protect user privacy."
+  ],
+  "key_features": [
+    "Server mode with folder selection via Storage Access Framework (SAF) and embedded Ktor HTTP server running on port 8888.",
+    "Automatic server discovery on the local network using NSD broadcasting under the service name _lanflix._tcp.",
+    "Server functions include media library browsing with metadata caching, background thumbnail generation, and a foreground service to maintain server availability.",
+    "Client mode supports server discovery via NSD, manual IP connection, WebView-based browsing of server content, and strict host enforcement for security.",
+    "Native ExoPlayer-based video playback with resume support and playback history managed via Room database.",
+    "Settings include theme selection, server naming, privacy/security information display, and network status overview."
+  ],
+  "user_flow_summary": [
+    "Upon first launch, user sets a username and is directed to the home screen.",
+    "In Server mode, user selects a media folder via SAF, starts the Ktor HTTP server, and can monitor server status including uptime, bandwidth, and active connections.",
+    "In Client mode, user discovers servers automatically via NSD or inputs an IP address manually, browses media via server-hosted WebView UI, and taps videos to launch native playback.",
+    "Playback resumes from the last watched position using ExoPlayer and playback history is persisted with configurable retention."
+  ],
+  "validation_criteria": [
+    "Clients reliably discover servers on the local network using NSD.",
+    "Server can start and serve media content from the selected local folder with low latency due to metadata caching.",
+    "Video lists and thumbnails load quickly and accurately reflecting the media folder content.",
+    "Playback resumes reliably from the last known position without failures across restarts.",
+    "Server remains active and accessible during background streaming sessions due to the foreground service implementation.",
+    "User settings are persisted correctly across app restarts and reflected in the UI (theme, server name, etc).",
+    "Strict host enforcement effectively prevents unauthorized connections or data leakage from clients.",
+    "No external network access occurs; all streaming and data handling are performed locally to protect privacy."
+  ],
+  "code_summary": {
+    "project": "LANflix",
+    "root": "/home/yossef/personal/application/LANflix",
+    "stack": {
+      "language": [
+        "Kotlin",
+        "Java",
+        "HTML",
+        "JavaScript"
+      ],
+      "platform": [
+        "Android"
+      ],
+      "build": "Gradle (Kotlin DSL)",
+      "ui": [
+        "Android Views",
+        "WebView (served HTML + Tailwind CSS)"
+      ]
+    },
+    "architecture": {
+      "pattern": "MVVM",
+      "di": "Koin",
+      "storage": [
+        "Room (SQLite)",
+        "DataStore Preferences"
+      ],
+      "network": [
+        "Ktor embedded server",
+        "Android NSD (service discovery)"
+      ]
+    },
+    "features": {
+      "server_mode": [
+        "Select local folder via SAF",
+        "Embedded Ktor HTTP server on port 8888",
+        "HTML UI for browsing and streaming",
+        "Auto-discovery via NSD (_lanflix._tcp)",
+        "Metadata cache + background rebuild",
+        "Thumbnail generation and caching",
+        "Foreground service to keep server alive",
+        "Stats: uptime, bandwidth, active connections"
+      ],
+      "client_mode": [
+        "Discover servers via NSD",
+        "Manual IP connect",
+        "WebView UI for browsing",
+        "Security: strict host enforcement",
+        "Launch native player for video URLs"
+      ],
+      "playback": [
+        "ExoPlayer (androidx.media3)",
+        "Resume playback history",
+        "History retention settings"
+      ],
+      "settings_profile": [
+        "Theme selection",
+        "Server name",
+        "Privacy & security info",
+        "Network info"
+      ]
+    },
+    "key_modules": {
+      "app": "app/",
+      "server": "app/src/main/java/com/thiyagu/media_server/server",
+      "data": "app/src/main/java/com/thiyagu/media_server/data",
+      "viewmodels": "app/src/main/java/com/thiyagu/media_server/viewmodel",
+      "ui_activities": "app/src/main/java/com/thiyagu/media_server"
+    }
+  }
+}

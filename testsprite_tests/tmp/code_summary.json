@@ -1,0 +1,53 @@
+{
+    "project": "LANflix",
+    "root": "/home/yossef/personal/application/LANflix",
+    "stack": {
+        "language": ["Kotlin", "Java", "HTML", "JavaScript"],
+        "platform": ["Android"],
+        "build": "Gradle (Kotlin DSL)",
+        "ui": ["Android Views", "WebView (served HTML + Tailwind CSS)"]
+    },
+    "architecture": {
+        "pattern": "MVVM",
+        "di": "Koin",
+        "storage": ["Room (SQLite)", "DataStore Preferences"],
+        "network": ["Ktor embedded server", "Android NSD (service discovery)"]
+    },
+    "features": {
+        "server_mode": [
+            "Select local folder via SAF",
+            "Embedded Ktor HTTP server on port 8888",
+            "HTML UI for browsing and streaming",
+            "Auto-discovery via NSD (_lanflix._tcp)",
+            "Metadata cache + background rebuild",
+            "Thumbnail generation and caching",
+            "Foreground service to keep server alive",
+            "Stats: uptime, bandwidth, active connections"
+        ],
+        "client_mode": [
+            "Discover servers via NSD",
+            "Manual IP connect",
+            "WebView UI for browsing",
+            "Security: strict host enforcement",
+            "Launch native player for video URLs"
+        ],
+        "playback": [
+            "ExoPlayer (androidx.media3)",
+            "Resume playback history",
+            "History retention settings"
+        ],
+        "settings_profile": [
+            "Theme selection",
+            "Server name",
+            "Privacy & security info",
+            "Network info"
+        ]
+    },
+    "key_modules": {
+        "app": "app/",
+        "server": "app/src/main/java/com/thiyagu/media_server/server",
+        "data": "app/src/main/java/com/thiyagu/media_server/data",
+        "viewmodels": "app/src/main/java/com/thiyagu/media_server/viewmodel",
+        "ui_activities": "app/src/main/java/com/thiyagu/media_server"
+    }
+}
