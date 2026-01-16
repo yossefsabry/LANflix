@@ -254,11 +254,22 @@ fun Route.configureServerRoutes(server: KtorMediaStreamingServer) {
     }
 
     get("/") {
-        if (!call.requireAuth(server)) return@get
         call.noStore()
         val mode = call.request.queryParameters["mode"]
         val pathParam = call.request.queryParameters["path"] ?: ""
         val themeParam = call.request.queryParameters["theme"] ?: "dark"
+
+        val authRequired = server.authManager.isAuthEnabled()
+        val authorized = server.authManager.isAuthorized(call)
+        if (authRequired && !authorized) {
+            call.respondOutputStream(ContentType.Text.Html) {
+                val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(this, Charsets.UTF_8))
+                with(HtmlTemplates) {
+                    writer.respondLoginPage(themeParam = themeParam)
+                }
+            }
+            return@get
+        }
 
         call.respondOutputStream(ContentType.Text.Html) {
             val writer = java.io.BufferedWriter(java.io.OutputStreamWriter(this, Charsets.UTF_8))
