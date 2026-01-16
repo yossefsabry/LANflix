@@ -1,0 +1,12 @@
+LANflix is a local media streaming app with two modes: Server and Client.
+Run the server on one device to host a local media folder, and use the client
+on another device to discover and stream videos over your LAN.
+
+Features:
+- Local-only streaming on your home network
+- Automatic server discovery over Wi-Fi
+- Resume playback with configurable history retention
+- Media management dashboard
+- ExoPlayer-based playback
+
+No cloud accounts are required, and everything stays on your local network.
