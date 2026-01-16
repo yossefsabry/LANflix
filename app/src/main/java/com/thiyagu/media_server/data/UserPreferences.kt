@@ -33,6 +33,10 @@ class UserPreferences(private val context: Context) {
         val SUBFOLDER_SCANNING_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("subfolder_scanning")
         val HISTORY_RETENTION_KEY = androidx.datastore.preferences.core.intPreferencesKey("history_retention_days")
         val SERVER_NAME_KEY = stringPreferencesKey("server_name")
+        val SERVER_AUTH_ENABLED_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("server_auth_enabled")
+        val SERVER_AUTH_PIN_HASH_KEY = stringPreferencesKey("server_auth_pin_hash")
+        val SERVER_AUTH_PIN_SALT_KEY = stringPreferencesKey("server_auth_pin_salt")
+        val NOTIFICATIONS_PROMPTED_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("notifications_prompted")
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data
@@ -59,6 +63,11 @@ class UserPreferences(private val context: Context) {
         .map { preferences ->
             preferences[HISTORY_RETENTION_KEY] ?: 10 // Default 10 days
         }
+        
+    val notificationsPromptedFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[NOTIFICATIONS_PROMPTED_KEY] ?: false
+        }
 
     suspend fun saveSelectedFolder(uri: String) {
         context.dataStore.edit { preferences ->
@@ -77,6 +86,12 @@ class UserPreferences(private val context: Context) {
             preferences[HISTORY_RETENTION_KEY] = days
         }
     }
+    
+    suspend fun saveNotificationsPrompted(prompted: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATIONS_PROMPTED_KEY] = prompted
+        }
+    }
 
     val serverNameFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
@@ -86,6 +101,41 @@ class UserPreferences(private val context: Context) {
     suspend fun saveServerName(name: String) {
         context.dataStore.edit { preferences ->
             preferences[SERVER_NAME_KEY] = name
+        }
+    }
+
+    val serverAuthEnabledFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[SERVER_AUTH_ENABLED_KEY] ?: false
+        }
+
+    val serverAuthPinHashFlow: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[SERVER_AUTH_PIN_HASH_KEY]
+        }
+
+    val serverAuthPinSaltFlow: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[SERVER_AUTH_PIN_SALT_KEY]
+        }
+
+    suspend fun saveServerAuthEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SERVER_AUTH_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun saveServerAuthPin(hash: String, salt: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SERVER_AUTH_PIN_HASH_KEY] = hash
+            preferences[SERVER_AUTH_PIN_SALT_KEY] = salt
+        }
+    }
+
+    suspend fun clearServerAuthPin() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(SERVER_AUTH_PIN_HASH_KEY)
+            preferences.remove(SERVER_AUTH_PIN_SALT_KEY)
         }
     }
     

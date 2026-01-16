@@ -127,6 +127,37 @@ object HtmlTemplates {
         }
     </style>
     <script>
+        const LanflixAuth = {
+            getPinKey() {
+                return `lanflix_pin_${'$'}{window.location.host}`;
+            },
+            getPin() {
+                return localStorage.getItem(this.getPinKey()) || localStorage.getItem('lanflix_pin');
+            },
+            setPin(pin) {
+                if (pin) localStorage.setItem(this.getPinKey(), pin);
+            },
+            clearPin() {
+                localStorage.removeItem(this.getPinKey());
+            }
+        };
+        window.LanflixAuth = LanflixAuth;
+        const LanflixClient = {
+            getClientKey() {
+                return `lanflix_client_${'$'}{window.location.host}`;
+            },
+            getId() {
+                return localStorage.getItem(this.getClientKey()) || localStorage.getItem('lanflix_client');
+            },
+            setId(id) {
+                if (id) localStorage.setItem(this.getClientKey(), id);
+            },
+            clearId() {
+                localStorage.removeItem(this.getClientKey());
+            }
+        };
+        window.LanflixClient = LanflixClient;
+
         // Theme & Persistence Logic
         (function() {
             // Check LocalStorage for theme preference
@@ -135,6 +166,18 @@ object HtmlTemplates {
             const urlTheme = urlParams.get('theme');
             const mode = urlParams.get('mode');
             const path = urlParams.get('path');
+            const urlPin = urlParams.get('pin');
+            const urlClient = urlParams.get('client');
+            if (urlPin) LanflixAuth.setPin(urlPin);
+            if (urlClient) LanflixClient.setId(urlClient);
+            const storedPin = LanflixAuth.getPin();
+            const storedClient = LanflixClient.getId();
+            if (storedPin && !urlParams.get('pin')) {
+                urlParams.set('pin', storedPin);
+            }
+            if (storedClient && !urlParams.get('client')) {
+                urlParams.set('client', storedClient);
+            }
             
             // If URL has no theme but we have a saved one, redirect to apply it (Server-Side Rendering needs it)
             // Or better: Apply it via JS immediately to body class, but SSR color variables might be wrong.
@@ -158,11 +201,13 @@ object HtmlTemplates {
             // Restore State for Root Visit
             if (!window.location.search) {
                 const lastMode = localStorage.getItem('lanflix_last_mode');
+                const pinParam = storedPin ? '&pin=' + encodeURIComponent(storedPin) : '';
+                const clientParam = storedClient ? '&client=' + encodeURIComponent(storedClient) : '';
                 if (lastMode === 'tree') {
                    const lastPath = localStorage.getItem('lanflix_last_path');
-                   window.location.replace('/?mode=tree&theme=' + targetTheme + (lastPath ? '&path=' + encodeURIComponent(lastPath) : ''));
+                   window.location.replace('/?mode=tree&theme=' + targetTheme + pinParam + clientParam + (lastPath ? '&path=' + encodeURIComponent(lastPath) : ''));
                 } else {
-                   window.location.replace('/?theme=' + targetTheme);
+                   window.location.replace('/?theme=' + targetTheme + pinParam + clientParam);
                 }
             }
         })();
@@ -176,6 +221,52 @@ object HtmlTemplates {
             const url = new URL(window.location);
             url.searchParams.set('theme', next);
             window.location.href = url.toString();
+        }
+    </script>
+    <script>
+        function getAuthPin() {
+            return window.LanflixAuth ? window.LanflixAuth.getPin() : null;
+        }
+
+        function getClientId() {
+            return window.LanflixClient ? window.LanflixClient.getId() : null;
+        }
+
+        function withAuthParam(url) {
+            const pin = getAuthPin();
+            const resolved = new URL(url, window.location.origin);
+            if (pin && !resolved.searchParams.has('pin')) {
+                resolved.searchParams.set('pin', pin);
+            }
+            const clientId = getClientId();
+            if (clientId && !resolved.searchParams.has('client')) {
+                resolved.searchParams.set('client', clientId);
+            }
+            const query = resolved.searchParams.toString();
+            return query ? `${'$'}{resolved.pathname}?${'$'}{query}` : resolved.pathname;
+        }
+
+        async function apiFetch(input, init = {}) {
+            const pin = getAuthPin();
+            const clientId = getClientId();
+            const resolved = new URL(input, window.location.origin);
+            if (pin && !resolved.searchParams.has('pin')) {
+                resolved.searchParams.set('pin', pin);
+            }
+            if (clientId && !resolved.searchParams.has('client')) {
+                resolved.searchParams.set('client', clientId);
+            }
+            const headers = new Headers(init.headers || {});
+            if (pin) headers.set('X-Lanflix-Pin', pin);
+            if (clientId) headers.set('X-Lanflix-Client', clientId);
+            const res = await fetch(resolved.toString(), { cache: 'no-store', ...init, headers });
+            if (res.status === 401) {
+                if (window.LanflixAuth) window.LanflixAuth.clearPin();
+                setTimeout(() => {
+                    window.location.href = 'http://exit/';
+                }, 200);
+            }
+            return res;
         }
     </script>
     <script>
@@ -429,52 +520,7 @@ object HtmlTemplates {
                             searchTimeout: null
                         },
 
-                        // IndexedDB Cache Wrapper
-                        cache: {
-                            db: null,
-                            async init() {
-                                return new Promise((resolve, reject) => {
-                                    const req = indexedDB.open('LANflixDB', 2);
-                                    req.onupgradeneeded = e => {
-                                        const db = e.target.result;
-                                        if (!db.objectStoreNames.contains('items')) db.createObjectStore('items', { keyPath: 'name' });
-                                        if (!db.objectStoreNames.contains('tree_items')) db.createObjectStore('tree_items', { keyPath: 'path' });
-                                    };
-                                    req.onsuccess = () => { this.db = req.result; resolve(); };
-                                    req.onerror = reject;
-                                });
-                            },
-                            async get(key, store = 'items') {
-                                if (!this.db) await this.init();
-                                return new Promise(resolve => {
-                                    const tx = this.db.transaction(store, 'readonly');
-                                    const req = store === 'items' ? tx.objectStore(store).getAll() : tx.objectStore(store).get(key);
-                                    req.onsuccess = () => resolve(req.result);
-                                    req.onerror = () => resolve(null);
-                                });
-                            },
-                            async set(key, data, store = 'items') {
-                                if (!this.db) await this.init();
-                                const tx = this.db.transaction(store, 'readwrite');
-                                const os = tx.objectStore(store);
-                                if (store === 'items') {
-                                    data.forEach(item => { try { os.put(item); } catch(e){} });
-                                } else {
-                                    os.put({ path: key, items: data, timestamp: Date.now() });
-                                }
-                            },
-                            async saveVideos(videos) {
-                                await this.set('all_videos', videos, 'tree_items');
-                            },
-                            async loadAllVideos() {
-                                const res = await this.get('all_videos', 'tree_items');
-                                return res ? res.items : null;
-                            }
-                        },
-
                         init() {
-                            this.cache.init();
-                            
                             // intercept clicks
                             document.body.addEventListener('click', e => {
                                 const link = e.target.closest('a');
@@ -490,11 +536,12 @@ object HtmlTemplates {
                             // initial load
                             this.handleRoute(true);
                             
-                             // polling
-                            this.startPolling();
-                            
                             // Initialize Overlay
                             this.initOverlay();
+
+                            // polling
+                            this.startPolling();
+                            this.startHeartbeat();
                         },
                         
                         initOverlay() {
@@ -522,7 +569,8 @@ object HtmlTemplates {
                             if (this.showOverlay) this.showOverlay();
                             // Small delay to allow UI to update
                             setTimeout(() => {
-                                window.history.pushState({}, '', url);
+                                const nextUrl = withAuthParam(url);
+                                window.history.pushState({}, '', nextUrl);
                                 this.handleRoute();
                             }, 50);
                         },
@@ -562,21 +610,9 @@ object HtmlTemplates {
                                 if (newMode === 'tree') {
                                     document.getElementById('video-section').classList.add('hidden');
                                     document.getElementById('tree-section').classList.remove('hidden');
-                                    
-                                    // Try Cache First
-                                    const cached = await this.cache.get(newPath, 'tree_items');
-                                    if (cached && cached.items && cached.items.length > 0) {
-                                        this.renderItems(cached.items, 'tree');
-                                    }
                                 } else {
                                     document.getElementById('tree-section').classList.add('hidden');
                                     document.getElementById('video-section').classList.remove('hidden');
-                                    
-                                    // Try Cache First
-                                    const cached = await this.cache.get(null, 'items');
-                                    if (cached && cached.length > 0) {
-                                        this.renderItems(cached, 'flat');
-                                    }
                                 }
                             }
                             
@@ -652,37 +688,30 @@ object HtmlTemplates {
                             document.getElementById('loading-indicator').classList.remove('hidden');
 
                             try {
-                                // 1. Ensure we have the full video list (Memory or IDB or Network)
+                                // 1. Ensure we have the full video list (Memory or Network)
                                 if (this.state.allVideos.length === 0) {
-                                    // Try IDB first
-                                    const cachedList = await this.cache.loadAllVideos();
-                                    if (cachedList && cachedList.length > 0) {
-                                        this.state.allVideos = cachedList;
-                                    } else {
-                                        // Fetch from API
-                                        // Try /api/cache first (Fastest)
-                                        try {
-                                            const res = await fetch('/api/cache');
-                                            if (res.ok) {
-                                                const data = await res.json();
-                                                if (data.videos) {
-                                                    this.state.allVideos = data.videos;
-                                                    this.cache.saveVideos(data.videos); // Async save
-                                                    
-                                                    // Also update scanning status if available in data? 
-                                                    // No, CacheData format usually just has videos.
-                                                }
+                                    // Fetch from API
+                                    // Try /api/cache first (Fastest)
+                                    try {
+                                        const res = await apiFetch('/api/cache');
+                                        if (res.ok) {
+                                            const data = await res.json();
+                                            if (data.videos) {
+                                                this.state.allVideos = data.videos;
+                                                
+                                                // Also update scanning status if available in data? 
+                                                // No, CacheData format usually just has videos.
                                             }
-                                        } catch (e) { console.warn('Cache API failed'); }
-                                        
-                                        // If still empty, fall back to /api/videos (Progressive)
-                                        if (this.state.allVideos.length === 0) {
-                                             const res = await fetch('/api/videos?page=1'); // Just get first page to start
-                                             const data = await res.json();
-                                             // Note: /api/videos only returns paginated list.
-                                             // So we can't fully support Tree View until full scan completes/cache loads.
-                                             // But we can support Flat View.
                                         }
+                                    } catch (e) { console.warn('Cache API failed'); }
+                                    
+                                    // If still empty, fall back to /api/videos (Progressive)
+                                    if (this.state.allVideos.length === 0) {
+                                         const res = await apiFetch('/api/videos?page=1'); // Just get first page to start
+                                         const data = await res.json();
+                                         // Note: /api/videos only returns paginated list.
+                                         // So we can't fully support Tree View until full scan completes/cache loads.
+                                         // But we can support Flat View.
                                     }
                                 }
 
@@ -737,7 +766,7 @@ object HtmlTemplates {
                                     } else {
                                         // Legacy / Fallback Server Pagination
                                         const url = `/api/videos?page=${'$'}{this.state.page}`;
-                                        const res = await fetch(url);
+                                        const res = await apiFetch(url);
                                         const data = await res.json();
                                         
                                         this.updateVideoCount(data.totalVideos, data.scanning);
@@ -784,7 +813,7 @@ object HtmlTemplates {
                                 if (mode === 'tree' && item.type === 'dir') {
                                      // Folder
                                      const newPath = this.state.path ? `${'$'}{this.state.path}/${'$'}{name}` : name;
-                                     const href = `/?mode=tree&path=${'$'}{encodeURIComponent(newPath)}`;
+                                     const href = withAuthParam(`/?mode=tree&path=${'$'}{encodeURIComponent(newPath)}`);
                                      el.innerHTML = `<a href="${'$'}{href}" data-name="${'$'}{name}" class="group block bg-surface-light rounded-2xl p-4 border border-white/5 active:scale-95 transition-transform hover:border-primary/50">
                                         <div class="flex items-center gap-3 mb-2">
                                             <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -799,10 +828,10 @@ object HtmlTemplates {
                                      // Fix: Prioritize explicit path from cache to support nested files in Flat View
                                      const path = item.path || (this.state.path ? `${'$'}{this.state.path}/${'$'}{name}` : name);
                                      // Use API thumb route
-                                     const thumbUrl = `/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}`;
+                                     const thumbUrl = withAuthParam(`/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}`);
                                      
                                      // Fix: Include path in video link for robust server lookup
-                                     const videoUrl = `/${'$'}{name}?path=${'$'}{encodeURIComponent(path)}`;
+                                     const videoUrl = withAuthParam(`/${'$'}{name}?path=${'$'}{encodeURIComponent(path)}`);
                                      
                                      el.innerHTML = `<a href="${'$'}{videoUrl}" data-name="${'$'}{name}" class="group block bg-surface-light rounded-2xl p-2 border border-white/5 active:scale-95 transition-transform ${'$'}{animate ? 'animate-in fade-in zoom-in duration-300' : ''}">
                                           <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-background mb-3">
@@ -874,7 +903,7 @@ object HtmlTemplates {
                             
                             // Always add Home
                             const homeLink = document.createElement('a');
-                            homeLink.href = '/?mode=tree';
+                            homeLink.href = withAuthParam('/?mode=tree');
                             homeLink.className = (path) ? "text-text-sub hover:text-text-main text-sm" : "text-primary font-bold text-sm";
                             homeLink.textContent = "Home";
                             container.appendChild(homeLink);
@@ -896,7 +925,7 @@ object HtmlTemplates {
                                 
                                 const link = document.createElement('a');
                                 const isLast = index === parts.length - 1;
-                                link.href = `/?mode=tree&path=${'$'}{encodeURIComponent(currentPath)}`;
+                                link.href = withAuthParam(`/?mode=tree&path=${'$'}{encodeURIComponent(currentPath)}`);
                                 link.className = isLast ? "text-primary font-bold text-sm" : "text-text-sub hover:text-text-main text-sm";
                                 link.textContent = part;
                                 container.appendChild(link);
@@ -1000,12 +1029,13 @@ object HtmlTemplates {
                                 const name = video.name;
                                 const path = video.path || name;
                                 const size = Math.round(video.size || 0);
+                                const thumbUrl = withAuthParam(`/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}`);
                                 const el = document.createElement('a');
                                 // Fix: Include path in video link
-                                el.href = `/${'$'}{name}?path=${'$'}{encodeURIComponent(path)}`;
+                                el.href = withAuthParam(`/${'$'}{name}?path=${'$'}{encodeURIComponent(path)}`);
                                 el.className = "flex-none w-64 snap-start group relative rounded-2xl overflow-hidden aspect-video bg-surface-light border border-white/5";
                                 el.innerHTML = `
-                                    <img data-src="/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%231F1F1F%22%2F%3E%3Cpath%20d%3D%22M18%204l2%204h-3l-2-4h-2l2%204h-3l-2-4H8l2%204H7L5%204H4c-1.1%200-1.99.9-1.99%202L2%2018c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V4h-4z%22%20fill%3D%22%23333%22%2F%3E%3Cpath%20d%3D%22M12%2014l-2-3h4l-2%203z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E';this.classList.remove('opacity-0');" />
+                                    <img data-src="${'$'}{thumbUrl}" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjwvc3ZnPg==" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%231F1F1F%22%2F%3E%3Cpath%20d%3D%22M18%204l2%204h-3l-2-4h-2l2%204h-3l-2-4H8l2%204H7L5%204H4c-1.1%200-1.99.9-1.99%202L2%2018c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V4h-4z%22%20fill%3D%22%23333%22%2F%3E%3Cpath%20d%3D%22M12%2014l-2-3h4l-2%203z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E';this.classList.remove('opacity-0');" />
                                     <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                         <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-white text-3xl">play_arrow</span></div>
                                     </div>
@@ -1026,6 +1056,29 @@ object HtmlTemplates {
                             this.observeImages();
                         },
 
+                        startHeartbeat() {
+                            const overlay = document.getElementById('connection-lost');
+                            const show = () => overlay && overlay.classList.add('visible');
+                            const hide = () => overlay && overlay.classList.remove('visible');
+
+                            const heartbeat = async () => {
+                                if (document.hidden || !navigator.onLine) {
+                                    show();
+                                    return;
+                                }
+                                try {
+                                    const res = await apiFetch('/api/ping', { cache: 'no-store' });
+                                    if (res.ok) hide();
+                                    else show();
+                                } catch (e) {
+                                    show();
+                                }
+                            };
+
+                            heartbeat();
+                            this.heartbeatTimer = setInterval(heartbeat, 7000);
+                        },
+
                         startPolling() {
                             let pollInterval = 2000;
                             
@@ -1042,7 +1095,7 @@ object HtmlTemplates {
                                 }
 
                                 try {
-                                    const res = await fetch('/api/status');
+                                    const res = await apiFetch('/api/status');
                                     const status = await res.json();
                                     const bar = document.getElementById('scan-progress-container');
                                     

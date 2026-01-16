@@ -10,8 +10,13 @@
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        app:controller_layout_id="@layout/player_controls_lanflix"
         app:show_buffering="when_playing"
-        app:show_shuffle_button="true"
+        app:show_shuffle_button="false"
+        app:show_subtitle_button="false"
+        app:show_vr_button="false"
+        app:show_next_button="false"
+        app:show_previous_button="false"
         app:resize_mode="fit" />
 
     <ProgressBar

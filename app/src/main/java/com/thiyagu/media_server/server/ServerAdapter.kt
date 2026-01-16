@@ -29,18 +29,27 @@ class ServerAdapter(private val onServerClick: (DiscoveredServer) -> Unit) :
 
         fun bind(server: DiscoveredServer) {
             tvName.text = server.name
-            tvIp.text = "${server.ip}:${server.port}"
+            val statusText = if (server.isOnline) {
+                "${server.ip}:${server.port}"
+            } else {
+                "${server.ip}:${server.port} (offline)"
+            }
+            tvIp.text = statusText
             ivLock.visibility = if (server.isSecured) View.VISIBLE else View.GONE
+            itemView.alpha = if (server.isOnline) 1.0f else 0.5f
+            itemView.isEnabled = server.isOnline
             
             itemView.setOnClickListener {
-                onServerClick(server)
+                if (server.isOnline) {
+                    onServerClick(server)
+                }
             }
         }
     }
 
     class ServerDiffCallback : DiffUtil.ItemCallback<DiscoveredServer>() {
         override fun areItemsTheSame(oldItem: DiscoveredServer, newItem: DiscoveredServer): Boolean {
-            return oldItem.ip == newItem.ip
+            return oldItem.ip == newItem.ip && oldItem.port == newItem.port
         }
 
         override fun areContentsTheSame(oldItem: DiscoveredServer, newItem: DiscoveredServer): Boolean {

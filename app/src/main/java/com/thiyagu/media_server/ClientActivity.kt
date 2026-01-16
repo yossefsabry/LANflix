@@ -3,28 +3,46 @@ package com.thiyagu.media_server
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputFilter
+import android.text.InputType
 import android.view.View
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.Toast
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
+import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.util.ArrayDeque
+import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ClientActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var connectionContainer: LinearLayout
     private lateinit var loadingOverlay: android.widget.FrameLayout
+    private lateinit var loadingText: TextView
     private lateinit var etIpAddress: TextInputEditText
     private lateinit var rvServers: androidx.recyclerview.widget.RecyclerView
     private val discoveryManager: com.thiyagu.media_server.server.ServerDiscoveryManager by inject()
@@ -37,6 +55,45 @@ class ClientActivity : AppCompatActivity() {
     private val connectionTimeoutHandler = Handler(Looper.getMainLooper())
     private var connectionTimeoutRunnable: Runnable? = null
     private val CONNECTION_TIMEOUT_MS = 30000L // 30 seconds
+    private val clientPrefs by lazy { getSharedPreferences("lanflix_client_prefs", MODE_PRIVATE) }
+    private val PIN_PREF_PREFIX = "server_pin_"
+    private val CLIENT_ID_PREF = "client_id"
+    private val LAST_SERVER_IP = "last_server_ip"
+    private val LAST_SERVER_PORT = "last_server_port"
+    private val DEFAULT_PORT = 8888
+    private var lastPort: Int = DEFAULT_PORT
+
+    private data class PingResult(
+        val ok: Boolean,
+        val ready: Boolean,
+        val authRequired: Boolean,
+        val authorized: Boolean,
+        val statusCode: Int,
+        val errorMessage: String? = null
+    )
+
+    private enum class ConnectionPhase {
+        IDLE,
+        PINGING,
+        AUTH_REQUIRED,
+        LOADING,
+        CONNECTED,
+        ERROR
+    }
+
+    private enum class ConnectReason {
+        USER,
+        AUTO,
+        RETRY
+    }
+
+    private var phase: ConnectionPhase = ConnectionPhase.IDLE
+    private var autoReconnectAttempted = false
+    private var retryCount = 0
+    private val maxRetry = 3
+    private val baseRetryMs = 1000L
+    private var lastErrorMessage: String? = null
+    private val eventLog = ArrayDeque<String>(50)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,9 +101,11 @@ class ClientActivity : AppCompatActivity() {
 
         etIpAddress = findViewById(R.id.et_ip_address)
         val btnConnect = findViewById<MaterialButton>(R.id.btn_connect)
+        val btnDiagnostics = findViewById<MaterialButton>(R.id.btn_diagnostics)
         webView = findViewById(R.id.webview)
         connectionContainer = findViewById(R.id.connection_container)
         loadingOverlay = findViewById(R.id.loading_overlay)
+        loadingText = findViewById(R.id.loading_text)
         rvServers = findViewById(R.id.rv_servers)
         
         val btnBack = findViewById<android.view.View>(R.id.btn_back_home)
@@ -59,6 +118,10 @@ class ClientActivity : AppCompatActivity() {
                 // Return to Home
                 finish()
             }
+        }
+
+        btnDiagnostics.setOnClickListener {
+            showDiagnosticsDialog()
         }
 
         // Configure WebView with performance optimizations
@@ -100,7 +163,14 @@ class ClientActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val url = request?.url?.toString() ?: return false
+                val uri = request?.url ?: return false
+                val url = uri.toString()
+                val path = uri.path ?: ""
+                val isVideo = path.endsWith(".mp4", true)
+                    || path.endsWith(".mkv", true)
+                    || path.endsWith(".avi", true)
+                    || path.endsWith(".mov", true)
+                    || path.endsWith(".webm", true)
                 
                 if (url.endsWith("/exit") || url == "http://exit/") {
                     // Handle Exit: Full reset to connection screen
@@ -109,34 +179,54 @@ class ClientActivity : AppCompatActivity() {
                 }
                 
                 // Allow internal app navigation BEFORE security check
-                if (url.endsWith(".mp4", true) || url.endsWith(".mkv", true) || url.endsWith(".avi", true) || url.endsWith(".mov", true) || url.endsWith(".webm", true)) {
+                if (isVideo) {
                     // Handle Video: Pre-check existence then Launch Native Player
-                    val filename = android.net.Uri.parse(url).lastPathSegment
+                    val filename = uri.lastPathSegment
+                    if (filename.isNullOrEmpty()) return true
                     // Extract path query param if tree mode
-                    val pathParam = android.net.Uri.parse(url).getQueryParameter("path")
-                    val query = if (pathParam != null) "?path=${java.net.URLEncoder.encode(pathParam, "UTF-8")}" else ""
+                    val pathParam = uri.getQueryParameter("path")
+                    val pinParam = uri.getQueryParameter("pin")
+                    val queryParts = mutableListOf<String>()
+                    if (pathParam != null) {
+                        queryParts.add("path=${URLEncoder.encode(pathParam, "UTF-8")}")
+                    }
+                    if (!pinParam.isNullOrEmpty()) {
+                        queryParts.add("pin=${URLEncoder.encode(pinParam, "UTF-8")}")
+                    }
+                    val query = if (queryParts.isNotEmpty()) "?${queryParts.joinToString("&")}" else ""
                     
                     // Show Loading
                     loadingOverlay.visibility = View.VISIBLE
                     
                     lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         try {
-                            val checkUrl = "http://${android.net.Uri.parse(url).host}:8888/api/exists/$filename$query"
+                            val uri = android.net.Uri.parse(url)
+                            val host = uri.host
+                            val port = if (uri.port != -1) uri.port else DEFAULT_PORT
+                            val checkUrl = "http://${host}:$port/api/exists/$filename$query"
                             val connection = java.net.URL(checkUrl).openConnection() as java.net.HttpURLConnection
                             connection.requestMethod = "GET"
                             connection.connectTimeout = 5000
                             connection.readTimeout = 5000
+                            connection.setRequestProperty("X-Lanflix-Client", getClientId())
+                            if (!pinParam.isNullOrEmpty()) {
+                                connection.setRequestProperty("X-Lanflix-Pin", pinParam)
+                            }
                             
                             val responseCode = connection.responseCode
                             
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 loadingOverlay.visibility = View.GONE
                                 
-                                if (responseCode == 200) {
-                                    // File Exists! Launch Player
-                                    val intent = android.content.Intent(this@ClientActivity, VideoPlayerActivity::class.java)
-                                    intent.putExtra("VIDEO_URL", url)
-                                    startActivity(intent)
+                                    if (responseCode == 200) {
+                                        // File Exists! Launch Player
+                                        val intent = android.content.Intent(this@ClientActivity, VideoPlayerActivity::class.java)
+                                        intent.putExtra("VIDEO_URL", url)
+                                        intent.putExtra("CLIENT_ID", getClientId())
+                                        if (!pinParam.isNullOrEmpty()) {
+                                            intent.putExtra("PIN", pinParam)
+                                        }
+                                        startActivity(intent)
                                 } else {
                                     // File Not Found
                                     androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
@@ -197,6 +287,7 @@ class ClientActivity : AppCompatActivity() {
                 cancelConnectionTimeout() // Connection succeeded
                 loadingOverlay.visibility = View.GONE // Always hide loader
                 if (url != "about:blank") {
+                    setPhase(ConnectionPhase.CONNECTED, "Connected")
                     webView.visibility = View.VISIBLE
                     connectionContainer.visibility = View.GONE
                 }
@@ -208,14 +299,17 @@ class ClientActivity : AppCompatActivity() {
                 loadingOverlay.visibility = View.GONE // Always hide loader
                 // Prevent white screen flash by ignoring about:blank
                 if (url != "about:blank") {
+                    setPhase(ConnectionPhase.CONNECTED, "Connected")
                     webView.visibility = View.VISIBLE
                     connectionContainer.visibility = View.GONE
                 }
             }
             
             override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                cancelConnectionTimeout()
                 loadingOverlay.visibility = View.GONE
                 connectionContainer.visibility = View.VISIBLE
+                setPhase(ConnectionPhase.ERROR, "WebView error: $errorCode")
                 
                 // Show helpful error message
                 val errorMsg = when (errorCode) {
@@ -232,9 +326,50 @@ class ClientActivity : AppCompatActivity() {
                     .setTitle(this@ClientActivity.getString(R.string.dialog_connection_failed_title))
                     .setMessage(errorMsg)
                     .setPositiveButton(this@ClientActivity.getString(R.string.action_retry)) { _, _ ->
-                        failingUrl?.let { loadUrl(it) }
+                        val url = failingUrl ?: return@setPositiveButton
+                        val uri = android.net.Uri.parse(url)
+                        val host = uri.host ?: return@setPositiveButton
+                        val port = if (uri.port != -1) uri.port else lastPort
+                        attemptConnect(host, port, ConnectReason.RETRY, true)
                     }
                     .setNegativeButton(this@ClientActivity.getString(R.string.action_cancel), null)
+                    .show()
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                if (request?.isForMainFrame != true) return
+
+                cancelConnectionTimeout()
+                loadingOverlay.visibility = View.GONE
+                connectionContainer.visibility = View.VISIBLE
+
+                val statusCode = errorResponse?.statusCode ?: 0
+                setPhase(ConnectionPhase.ERROR, "HTTP error: $statusCode")
+                if (statusCode == 401 && currentHost != null) {
+                    clearSavedPin(currentHost!!, lastPort)
+                }
+
+                val message = if (statusCode == 401) {
+                    "Unauthorized. Please enter the server PIN again."
+                } else {
+                    "Server returned HTTP $statusCode. Please try again."
+                }
+
+                androidx.appcompat.app.AlertDialog.Builder(this@ClientActivity)
+                    .setTitle("Connection Failed")
+                    .setMessage(message)
+                    .setPositiveButton("Retry") { _, _ ->
+                        val ipAddress = etIpAddress.text.toString().trim()
+                        if (ipAddress.isNotEmpty()) {
+                            attemptConnect(ipAddress, lastPort)
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
                     .show()
             }
         }
@@ -242,23 +377,17 @@ class ClientActivity : AppCompatActivity() {
         btnConnect.setOnClickListener {
             val ipAddress = etIpAddress.text.toString().trim()
             if (ipAddress.isNotEmpty()) {
-                // Show loading immediately for instant feedback
-                loadingOverlay.visibility = View.VISIBLE
-                connectionContainer.visibility = View.GONE
-                
                 // Dismiss keyboard
                 val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 imm.hideSoftInputFromWindow(etIpAddress.windowToken, 0)
-
-                currentHost = ipAddress // Set strict host
-                val theme = if (isDarkMode()) "dark" else "light"
-                val url = "http://$ipAddress:8888?theme=$theme"
-                loadUrl(url)
+                attemptConnect(ipAddress, DEFAULT_PORT)
             }
         }
         
         // --- Server Discovery Setup ---
         setupDiscovery()
+
+        setPhase(ConnectionPhase.IDLE, "Ready")
         
         // Modern back press handling
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
@@ -284,16 +413,8 @@ class ClientActivity : AppCompatActivity() {
     private fun setupDiscovery() {
         // discoveryManager injected via Koin
         serverAdapter = com.thiyagu.media_server.server.ServerAdapter { server ->
-            // Click Handler
-            if (server.isSecured) {
-                showPasswordDialog(server)
-            } else {
-                // Direct Connect
-                etIpAddress.setText(server.ip)
-                currentHost = server.ip // Set strict host
-                val theme = if (isDarkMode()) "dark" else "light"
-                loadUrl("http://${server.ip}:${server.port}?theme=$theme")
-            }
+            etIpAddress.setText(server.ip)
+            attemptConnect(server.ip, server.port)
         }
         
         rvServers.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
@@ -308,32 +429,332 @@ class ClientActivity : AppCompatActivity() {
             }
         }
     }
-    
-    private fun showPasswordDialog(server: com.thiyagu.media_server.server.DiscoveredServer) {
-        val input = com.google.android.material.textfield.TextInputEditText(this)
-        input.hint = getString(R.string.hint_password)
-        val layout = LinearLayout(this)
-        layout.setPadding(50, 20, 50, 20)
-        layout.addView(input)
+
+    private fun attemptConnect(ip: String, port: Int, reason: ConnectReason = ConnectReason.USER, forceFresh: Boolean = false) {
+        connectionContainer.visibility = View.GONE
+        lastPort = port
+        if (reason == ConnectReason.USER) {
+            retryCount = 0
+        }
+        logEvent("Connect attempt to $ip:$port (${reason.name})")
+        setPhase(ConnectionPhase.PINGING, "Checking server...")
+
+        if (forceFresh) {
+            clearWebViewCacheForRetry()
+        }
+
+        lifecycleScope.launch {
+            val savedPin = getSavedPin(ip, port)
+            val pinToUse = savedPin?.takeIf { it.isNotBlank() }
+            val ping = pingWithRetry(ip, port, pinToUse)
+
+            if (ping.authRequired && !ping.authorized) {
+                if (!savedPin.isNullOrEmpty()) {
+                    clearSavedPin(ip, port)
+                }
+                setPhase(ConnectionPhase.AUTH_REQUIRED, "PIN required")
+                showPinDialog(ip, port)
+                return@launch
+            }
+
+            if (ping.statusCode == 503 || !ping.ready) {
+                val message = "Server starting, retrying..."
+                setPhase(ConnectionPhase.PINGING, message)
+                scheduleRetry(ip, port, reason, forceFresh, message)
+                return@launch
+            }
+
+            if (!ping.ok) {
+                val message = ping.errorMessage ?: "Unable to reach server."
+                setPhase(ConnectionPhase.ERROR, message)
+                if (reason != ConnectReason.AUTO) {
+                    showConnectionError(message)
+                }
+                return@launch
+            }
+
+            retryCount = 0
+            saveLastServer(ip, port)
+            currentHost = ip
+            setPhase(ConnectionPhase.LOADING, "Connecting...")
+            val url = buildServerUrl(ip, port, pinToUse, forceFresh)
+            loadUrl(url)
+        }
+    }
+
+    private fun showPinDialog(ip: String, port: Int) {
+        logEvent("PIN required for $ip:$port")
+        val input = TextInputEditText(this).apply {
+            hint = "Enter PIN"
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            filters = arrayOf(InputFilter.LengthFilter(8))
+        }
+        val layout = LinearLayout(this).apply {
+            setPadding(50, 20, 50, 20)
+            addView(input)
+        }
 
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(getString(R.string.dialog_password_title))
-            .setMessage(getString(R.string.dialog_password_message, server.name))
+            .setTitle("Server PIN Required")
+            .setMessage("Enter the PIN to connect.")
             .setView(layout)
-            .setPositiveButton(getString(R.string.action_connect)) { _, _ ->
-                 val password = input.text.toString()
-                 // TODO: Verify password with server. 
-                 // For now, we assume success if password is "admin"
-                 if (password == "admin") {
-                     etIpAddress.setText(server.ip)
-                     currentHost = server.ip // Set strict host
-                     val theme = if (isDarkMode()) "dark" else "light"
-                     loadUrl("http://${server.ip}:${server.port}?theme=$theme")
-                 } else {
-                     Toast.makeText(this, getString(R.string.error_incorrect_password), Toast.LENGTH_SHORT).show()
-                 }
+            .setPositiveButton("Connect") { _, _ ->
+                val pin = input.text?.toString()?.trim().orEmpty()
+                if (pin.isEmpty()) {
+                    Toast.makeText(this, "PIN required", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                logEvent("PIN entered")
+                verifyPinAndConnect(ip, port, pin)
             }
-            .setNegativeButton(getString(R.string.action_cancel), null)
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun verifyPinAndConnect(ip: String, port: Int, pin: String) {
+        setPhase(ConnectionPhase.PINGING, "Verifying PIN...")
+        lifecycleScope.launch {
+            val ping = pingWithRetry(ip, port, pin)
+            if (!ping.ok) {
+                val message = ping.errorMessage ?: "Unable to reach server."
+                setPhase(ConnectionPhase.ERROR, message)
+                showConnectionError(message)
+                return@launch
+            }
+            if (!ping.authorized) {
+                setPhase(ConnectionPhase.ERROR, "Incorrect PIN.")
+                showConnectionError("Incorrect PIN.")
+                return@launch
+            }
+
+            savePin(ip, port, pin)
+            currentHost = ip
+            setPhase(ConnectionPhase.LOADING, "Connecting...")
+            val url = buildServerUrl(ip, port, pin, false)
+            loadUrl(url)
+        }
+    }
+
+    private suspend fun pingWithRetry(ip: String, port: Int, pin: String?): PingResult {
+        var last = PingResult(false, false, false, false, 0, null)
+        repeat(maxRetry) { attempt ->
+            last = pingServer(ip, port, pin)
+            if ((last.ok && last.ready) || (last.authRequired && !last.authorized)) {
+                return last
+            }
+
+            val backoff = baseRetryMs * (1L shl attempt).coerceAtMost(8000L / baseRetryMs)
+            delay(backoff)
+        }
+        return last
+    }
+
+    private suspend fun pingServer(ip: String, port: Int, pin: String?): PingResult = withContext(Dispatchers.IO) {
+        try {
+            val clientId = getClientId()
+            val url = URL("http://$ip:$port/api/ping?client=${URLEncoder.encode(clientId, "UTF-8")}")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 5000
+                readTimeout = 5000
+                if (!pin.isNullOrEmpty()) {
+                    setRequestProperty("X-Lanflix-Pin", pin)
+                }
+                setRequestProperty("X-Lanflix-Client", clientId)
+            }
+
+            val code = conn.responseCode
+            val body = try {
+                (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.readText()
+            } catch (_: Exception) {
+                null
+            } ?: ""
+
+            val json = runCatching { JSONObject(body) }.getOrNull()
+            val authRequired = json?.optBoolean("authRequired", false) ?: false
+            val authorized = json?.optBoolean("authorized", !authRequired) ?: (!authRequired)
+            val ready = json?.optBoolean("ready", code == 200) ?: (code == 200)
+            val ok = code == 200 || code == 401 || code == 503
+
+            PingResult(
+                ok = ok,
+                ready = ready,
+                authRequired = authRequired,
+                authorized = authorized,
+                statusCode = code,
+                errorMessage = if (ok) null else json?.optString("error")
+            )
+        } catch (e: Exception) {
+            PingResult(false, false, false, false, 0, e.message)
+        }
+    }
+
+    private fun showConnectionError(message: String) {
+        logEvent("Connection error: $message")
+        loadingOverlay.visibility = View.GONE
+        connectionContainer.visibility = View.VISIBLE
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Connection Failed")
+            .setMessage(message)
+            .setPositiveButton("Retry") { _, _ ->
+                val ipAddress = etIpAddress.text.toString().trim()
+                if (ipAddress.isNotEmpty()) {
+                    attemptConnect(ipAddress, lastPort, ConnectReason.RETRY, true)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun scheduleRetry(
+        ip: String,
+        port: Int,
+        reason: ConnectReason,
+        forceFresh: Boolean,
+        message: String
+    ) {
+        if (reason == ConnectReason.USER && retryCount >= maxRetry) {
+            setPhase(ConnectionPhase.ERROR, message)
+            showConnectionError(message)
+            return
+        }
+        if (retryCount >= maxRetry) {
+            setPhase(ConnectionPhase.ERROR, message)
+            return
+        }
+
+        val delayMs = baseRetryMs * (1L shl retryCount).coerceAtMost(8000L / baseRetryMs)
+        retryCount += 1
+        logEvent("Retry #$retryCount in ${delayMs}ms")
+        connectionTimeoutHandler.postDelayed({
+            attemptConnect(ip, port, reason, forceFresh)
+        }, delayMs)
+    }
+
+    private fun getClientId(): String {
+        val existing = clientPrefs.getString(CLIENT_ID_PREF, null)
+        if (!existing.isNullOrBlank()) return existing
+        val newId = UUID.randomUUID().toString()
+        clientPrefs.edit().putString(CLIENT_ID_PREF, newId).apply()
+        return newId
+    }
+
+    private fun buildServerUrl(ip: String, port: Int, pin: String?, forceFresh: Boolean): String {
+        val theme = if (isDarkMode()) "dark" else "light"
+        val params = mutableListOf("theme=$theme")
+        if (!pin.isNullOrEmpty()) {
+            params.add("pin=${URLEncoder.encode(pin, "UTF-8")}")
+        }
+        params.add("client=${URLEncoder.encode(getClientId(), "UTF-8")}")
+        if (forceFresh) {
+            params.add("nocache=${System.currentTimeMillis()}")
+        }
+        return "http://$ip:$port?${params.joinToString("&")}"
+    }
+
+    private fun saveLastServer(ip: String, port: Int) {
+        clientPrefs.edit()
+            .putString(LAST_SERVER_IP, ip)
+            .putInt(LAST_SERVER_PORT, port)
+            .apply()
+    }
+
+    private fun getLastServer(): Pair<String, Int>? {
+        val ip = clientPrefs.getString(LAST_SERVER_IP, null) ?: return null
+        val port = clientPrefs.getInt(LAST_SERVER_PORT, DEFAULT_PORT)
+        return ip to port
+    }
+
+    private fun clearWebViewCacheForRetry() {
+        webView.stopLoading()
+        webView.clearHistory()
+        webView.clearCache(true)
+    }
+
+    private fun getSavedPin(ip: String, port: Int): String? {
+        return clientPrefs.getString("$PIN_PREF_PREFIX$ip:$port", null)
+    }
+
+    private fun savePin(ip: String, port: Int, pin: String) {
+        clientPrefs.edit().putString("$PIN_PREF_PREFIX$ip:$port", pin).apply()
+    }
+
+    private fun clearSavedPin(ip: String, port: Int) {
+        clientPrefs.edit().remove("$PIN_PREF_PREFIX$ip:$port").apply()
+    }
+
+    private fun setPhase(newPhase: ConnectionPhase, message: String? = null) {
+        phase = newPhase
+        message?.let { lastErrorMessage = it }
+        when (newPhase) {
+            ConnectionPhase.IDLE -> {
+                loadingOverlay.visibility = View.GONE
+                loadingText.text = "Loading..."
+                if (webView.visibility != View.VISIBLE) {
+                    connectionContainer.visibility = View.VISIBLE
+                }
+            }
+            ConnectionPhase.PINGING -> {
+                loadingOverlay.visibility = View.VISIBLE
+                loadingText.text = message ?: "Checking server..."
+            }
+            ConnectionPhase.AUTH_REQUIRED -> {
+                loadingOverlay.visibility = View.GONE
+                loadingText.text = "Loading..."
+            }
+            ConnectionPhase.LOADING -> {
+                loadingOverlay.visibility = View.VISIBLE
+                loadingText.text = message ?: "Connecting..."
+            }
+            ConnectionPhase.CONNECTED -> {
+                loadingOverlay.visibility = View.GONE
+                loadingText.text = "Loading..."
+            }
+            ConnectionPhase.ERROR -> {
+                loadingOverlay.visibility = View.GONE
+                loadingText.text = "Loading..."
+                if (webView.visibility != View.VISIBLE) {
+                    connectionContainer.visibility = View.VISIBLE
+                }
+            }
+        }
+        logEvent("Phase: $newPhase${message?.let { " - $it" } ?: ""}")
+    }
+
+    private fun logEvent(message: String) {
+        val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        if (eventLog.size >= 50) {
+            eventLog.removeFirst()
+        }
+        eventLog.addLast("$timestamp $message")
+    }
+
+    private fun showDiagnosticsDialog() {
+        val logText = buildString {
+            appendLine("Phase: $phase")
+            lastErrorMessage?.let { appendLine("LastError: $it") }
+            appendLine("ClientId: ${getClientId()}")
+            appendLine("LastServer: ${clientPrefs.getString(LAST_SERVER_IP, "-")}:${clientPrefs.getInt(LAST_SERVER_PORT, -1)}")
+            appendLine("---")
+            eventLog.forEach { appendLine(it) }
+        }.trim()
+
+        val content = TextView(this).apply {
+            text = if (logText.isBlank()) "No diagnostics yet." else logText
+            setTextColor(ContextCompat.getColor(this@ClientActivity, R.color.lanflix_text_main))
+            setPadding(40, 20, 40, 20)
+            setTextIsSelectable(true)
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Diagnostics")
+            .setView(content)
+            .setPositiveButton("Copy") { _, _ ->
+                val clipboard = getSystemService(ClipboardManager::class.java)
+                clipboard.setPrimaryClip(ClipData.newPlainText("LANflix Diagnostics", content.text))
+                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -344,11 +765,24 @@ class ClientActivity : AppCompatActivity() {
         if (webView.visibility != View.VISIBLE) {
             loadingOverlay.visibility = View.GONE
         }
+
+        if (!autoReconnectAttempted && webView.visibility != View.VISIBLE) {
+            val last = getLastServer()
+            if (last != null) {
+                val (ip, port) = last
+                logEvent("Auto-reconnect to $ip:$port")
+                autoReconnectAttempted = true
+                attemptConnect(ip, port, ConnectReason.AUTO, false)
+            }
+        }
     }
 
     override fun onPause() {
         super.onPause()
         discoveryManager.stopDiscovery()
+        if (webView.visibility != View.VISIBLE) {
+            autoReconnectAttempted = false
+        }
     }
 
     private fun resetWebViewState() {
@@ -369,13 +803,11 @@ class ClientActivity : AppCompatActivity() {
                 removeAllCookies(null)
                 flush()
             }
-            
-            // Clear all storage types (requires API 21+)
-            android.webkit.WebStorage.getInstance().deleteAllData()
         }
         
         // Reset connection state
         currentHost = null
+        setPhase(ConnectionPhase.IDLE, "Reset")
         
         // Ensure UI is in correct state
         webView.visibility = View.GONE
@@ -390,6 +822,7 @@ class ClientActivity : AppCompatActivity() {
             // Timeout fired - connection hung
             webView.stopLoading()
             loadingOverlay.visibility = View.GONE
+            setPhase(ConnectionPhase.ERROR, "Connection timeout")
             
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Connection Timeout")
@@ -397,9 +830,7 @@ class ClientActivity : AppCompatActivity() {
                 .setPositiveButton("Retry") { _, _ ->
                     val ipAddress = etIpAddress.text.toString().trim()
                     if (ipAddress.isNotEmpty()) {
-                        currentHost = ipAddress
-                        val theme = if (isDarkMode()) "dark" else "light"
-                        loadUrl("http://$ipAddress:8888?theme=$theme")
+                        attemptConnect(ipAddress, lastPort, ConnectReason.RETRY, true)
                     }
                 }
                 .setNegativeButton("Cancel") { _, _ ->
@@ -424,6 +855,7 @@ class ClientActivity : AppCompatActivity() {
         
         loadingOverlay.visibility = View.VISIBLE
         connectionContainer.visibility = View.GONE
+        logEvent("Loading URL: $url")
         
         // Start timeout timer
         startConnectionTimeout()

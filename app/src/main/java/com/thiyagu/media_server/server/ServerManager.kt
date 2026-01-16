@@ -7,6 +7,7 @@ import com.thiyagu.media_server.service.MediaServerService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
@@ -18,18 +19,19 @@ class ServerManager(private val context: Context, private val userPreferences: c
     val state: StateFlow<ServerState> = _state
 
     private var serverStartTime: Long = 0L
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
 
     fun getStartTime(): Long {
         return serverStartTime
     }
 
-    fun getActiveConnections(): Int {
-        return KtorMediaStreamingServer.activeConnections.get()
+    fun getConnectionStats(): ConnectionStats {
+        return server?.getConnectionStats() ?: ConnectionStats(0, 0, 0)
     }
 
     fun startServer(folderUri: Uri, port: Int = 8888) {
         // Prevent starting if already running
-        if (_state.value is ServerState.Running) return
+        if (_state.value is ServerState.Running || _state.value is ServerState.Starting || _state.value is ServerState.Stopping) return
         
         // Start Service first
         val intent = Intent(context, MediaServerService::class.java)
@@ -53,7 +55,7 @@ class ServerManager(private val context: Context, private val userPreferences: c
                 return
             }
 
-            server = KtorMediaStreamingServer(context, folderUri, port)
+            server = KtorMediaStreamingServer(context, folderUri, userPreferences, port)
             server?.start()
 
             serverStartTime = System.currentTimeMillis() // Track start time
@@ -72,24 +74,27 @@ class ServerManager(private val context: Context, private val userPreferences: c
     }
 
     fun stopServer() {
-        if (_state.value is ServerState.Stopped) return
+        if (_state.value is ServerState.Stopped || _state.value is ServerState.Stopping) return
 
-        try {
-            server?.stop()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            server = null
-            serverStartTime = 0L // Reset logic
-            _state.value = ServerState.Stopped
-            
-            // Unregister NSD
-            unregisterService()
-            
-            // Stop Service
-            val intent = Intent(context, MediaServerService::class.java)
-            intent.action = MediaServerService.ACTION_STOP
-            context.startService(intent) // Send stop action
+        _state.value = ServerState.Stopping
+        scope.launch {
+            try {
+                server?.stop()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                server = null
+                serverStartTime = 0L // Reset logic
+                _state.value = ServerState.Stopped
+                
+                // Unregister NSD
+                unregisterService()
+                
+                // Stop Service
+                val intent = Intent(context, MediaServerService::class.java)
+                intent.action = MediaServerService.ACTION_STOP
+                context.startService(intent) // Send stop action
+            }
         }
     }
     
@@ -137,6 +142,13 @@ class ServerManager(private val context: Context, private val userPreferences: c
                 // In the future, we can add attributes here like:
                 // setAttribute("secured", "false")
             }
+
+            val authEnabled = kotlinx.coroutines.runBlocking {
+                val enabled = userPreferences.serverAuthEnabledFlow.first()
+                val hash = userPreferences.serverAuthPinHashFlow.first()
+                enabled && !hash.isNullOrBlank()
+            }
+            serviceInfo.setAttribute("auth", if (authEnabled) "1" else "0")
 
             registrationListener = object : android.net.nsd.NsdManager.RegistrationListener {
                 override fun onServiceRegistered(NsdServiceInfo: android.net.nsd.NsdServiceInfo) {

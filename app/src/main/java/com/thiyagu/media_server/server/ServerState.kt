@@ -2,6 +2,7 @@ package com.thiyagu.media_server.server
 
 sealed class ServerState {
     object Stopped : ServerState()
+    object Stopping : ServerState()
     object Starting : ServerState()
     data class Running(
         val url: String, 

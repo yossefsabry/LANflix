@@ -1,16 +1,21 @@
 package com.thiyagu.media_server
 
+import android.Manifest
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.thiyagu.media_server.databinding.ActivityStreamingBinding
@@ -34,6 +39,15 @@ class StreamingActivity : AppCompatActivity() {
     private var selectedFolderUri: Uri? = null
     private var isLogsExpanded: Boolean = false
     private var serverUrl: String = "" // For click listener
+    
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                startServer()
+            } else {
+                Toast.makeText(this, "Notifications are required to run the server", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +66,11 @@ class StreamingActivity : AppCompatActivity() {
                         setStatus(false)
                         binding.serverUrlText.text = getLocalIpAddress() ?: "Offline"
                         log("Server Stopped")
+                    }
+                    is ServerState.Stopping -> {
+                        setStoppingStatus()
+                        binding.serverUrlText.text = "Stopping..."
+                        log("Server Stopping")
                     }
                     is ServerState.Starting -> {
                         binding.serverUrlText.text = "Starting..."
@@ -119,10 +138,17 @@ class StreamingActivity : AppCompatActivity() {
             }
         }
         
-        // 5. Active Connections
+        // 5. Connected Devices
         lifecycleScope.launch {
-            viewModel.activeConnections.collect { count ->
+            viewModel.connectedDevices.collect { count ->
                 binding.tvStatActive.text = count.toString()
+            }
+        }
+
+        // 6. Streaming Devices
+        lifecycleScope.launch {
+            viewModel.streamingDevices.collect { count ->
+                binding.tvStatStreaming.text = count.toString()
             }
         }
         
@@ -245,7 +271,77 @@ class StreamingActivity : AppCompatActivity() {
             Toast.makeText(this, "Please select a media folder first", Toast.LENGTH_SHORT).show()
             return
         }
+        if (!areNotificationsAllowed()) {
+            showNotificationRequiredDialog()
+            return
+        }
         viewModel.startServer(selectedFolderUri!!)
+    }
+    
+    private fun areNotificationsAllowed(): Boolean {
+        val notificationsEnabled = NotificationManagerCompat.from(this).areNotificationsEnabled()
+        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        return notificationsEnabled && hasPermission
+    }
+    
+    private fun needsNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+    }
+    
+    private fun showNotificationRequiredDialog() {
+        val needsPermission = needsNotificationPermission()
+        val message = if (needsPermission) {
+            "LANflix needs notification permission to keep the server running."
+        } else {
+            "Notifications are disabled. Enable them to run the server."
+        }
+        
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Enable Notifications")
+            .setMessage(message)
+            .setNegativeButton("Not now", null)
+        
+        if (needsPermission) {
+            builder.setPositiveButton("Allow") { _, _ ->
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            builder.setNeutralButton("Settings") { _, _ ->
+                openAppNotificationSettings()
+            }
+        } else {
+            builder.setPositiveButton("Open Settings") { _, _ ->
+                openAppNotificationSettings()
+            }
+        }
+        
+        builder.show()
+    }
+    
+    private fun openAppNotificationSettings() {
+        try {
+            val intent = Intent()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent.action = android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+            } else {
+                intent.action = android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                intent.data = android.net.Uri.fromParts("package", packageName, null)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Unable to open notification settings", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun setStatus(running: Boolean) {
@@ -255,6 +351,8 @@ class StreamingActivity : AppCompatActivity() {
             binding.statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
             
             binding.btnStartServer.text = "Stop"
+            binding.btnStartServer.isEnabled = true
+            binding.btnStartServer.alpha = 1.0f
             binding.btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_pause)
             binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface_hover)
             
@@ -273,6 +371,8 @@ class StreamingActivity : AppCompatActivity() {
             binding.statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_text_sub)
             
             binding.btnStartServer.text = "Start"
+            binding.btnStartServer.isEnabled = true
+            binding.btnStartServer.alpha = 1.0f
             binding.btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_play_arrow)
             binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_primary)
             
@@ -284,6 +384,21 @@ class StreamingActivity : AppCompatActivity() {
             // Reset Stats (Speed & Active are reset by ViewModel)
             binding.tvStatLoad.text = "0%"
         }
+    }
+
+    private fun setStoppingStatus() {
+        binding.statusBadge.text = "STOPPING"
+        binding.statusBadge.setTextColor(ContextCompat.getColor(this, R.color.lanflix_text_sub))
+        binding.statusDot.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_text_sub)
+
+        binding.btnStartServer.text = "Stopping..."
+        binding.btnStartServer.isEnabled = false
+        binding.btnStartServer.alpha = 0.6f
+        binding.btnStartServer.icon = ContextCompat.getDrawable(this, R.drawable.ic_pause)
+        binding.btnStartServer.backgroundTintList = ContextCompat.getColorStateList(this, R.color.lanflix_surface_hover)
+
+        binding.btnOpenDashboard.isEnabled = false
+        binding.btnOpenDashboard.alpha = 0.5f
     }
 
     private fun log(message: String) {

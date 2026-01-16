@@ -145,8 +145,11 @@ class StreamingViewModel(
     private val _networkSpeed = MutableStateFlow(0f)
     val networkSpeed: StateFlow<Float> = _networkSpeed.asStateFlow()
     
-    private val _activeConnections = MutableStateFlow(0)
-    val activeConnections: StateFlow<Int> = _activeConnections.asStateFlow()
+    private val _connectedDevices = MutableStateFlow(0)
+    val connectedDevices: StateFlow<Int> = _connectedDevices.asStateFlow()
+    
+    private val _streamingDevices = MutableStateFlow(0)
+    val streamingDevices: StateFlow<Int> = _streamingDevices.asStateFlow()
 
     private suspend fun startUptimeCounter() {
         var lastTxBytes = android.net.TrafficStats.getUidTxBytes(android.os.Process.myUid())
@@ -183,7 +186,9 @@ class StreamingViewModel(
             _networkSpeed.value = mbps
             
             // 3. Active Connections
-            _activeConnections.value = serverManager.getActiveConnections()
+            val stats = serverManager.getConnectionStats()
+            _connectedDevices.value = stats.connectedDevices
+            _streamingDevices.value = stats.streamingDevices
             
             delay(1000)
         }
@@ -193,6 +198,7 @@ class StreamingViewModel(
         uptimeSeconds = 0
         _uptimeString.value = "0m"
         _networkSpeed.value = 0f
-        _activeConnections.value = 0
+        _connectedDevices.value = 0
+        _streamingDevices.value = 0
     }
 }

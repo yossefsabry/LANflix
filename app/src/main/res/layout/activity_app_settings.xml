@@ -128,6 +128,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
 
+            <include layout="@layout/item_profile_option"
+                android:id="@+id/opt_server_pin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"/>
+
             <!-- History Section -->
             <TextView
                 android:layout_width="match_parent"

@@ -9,14 +9,20 @@ import androidx.appcompat.app.AppCompatActivity
 
 import androidx.lifecycle.lifecycleScope
 import com.thiyagu.media_server.data.UserPreferences
+import com.thiyagu.media_server.utils.PinAuth
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
 import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.flow.combine
+import android.text.InputFilter
+import android.text.InputType
 
 class AppSettingsActivity : AppCompatActivity() {
 
     private val userPreferences: UserPreferences by inject()
+    private var isServerAuthEnabled: Boolean = false
+    private var hasServerPin: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +52,11 @@ class AppSettingsActivity : AppCompatActivity() {
         setupOption(R.id.opt_server_name, R.drawable.ic_settings, "Server Name", "LANflix Server") {
             showServerNameDialog()
         }
+
+        // Server PIN Option
+        setupOption(R.id.opt_server_pin, R.drawable.ic_lock, "Server PIN", "Off") {
+            showServerPinDialog()
+        }
         
         // Observe Theme changes
         lifecycleScope.launch {
@@ -71,6 +82,21 @@ class AppSettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             userPreferences.serverNameFlow.collect { name ->
                 updateOptionSubtitle(R.id.opt_server_name, name)
+            }
+        }
+
+        // Observe Server PIN changes
+        lifecycleScope.launch {
+            combine(
+                userPreferences.serverAuthEnabledFlow,
+                userPreferences.serverAuthPinHashFlow
+            ) { enabled, hash ->
+                Pair(enabled, !hash.isNullOrBlank())
+            }.collect { (enabled, hasPin) ->
+                isServerAuthEnabled = enabled
+                hasServerPin = hasPin
+                val subtitle = if (enabled && hasPin) "On" else "Off"
+                updateOptionSubtitle(R.id.opt_server_pin, subtitle)
             }
         }
     }
@@ -104,6 +130,76 @@ class AppSettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun showServerPinDialog() {
+        if (isServerAuthEnabled && hasServerPin) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Server PIN")
+                .setItems(arrayOf("Change PIN", "Disable PIN")) { _, which ->
+                    when (which) {
+                        0 -> showPinSetupDialog(title = "Change Server PIN")
+                        1 -> disableServerPin()
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        } else {
+            showPinSetupDialog(title = "Enable Server PIN")
+        }
+    }
+
+    private fun showPinSetupDialog(title: String) {
+        val layout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 10)
+        }
+
+        val pinInput = android.widget.EditText(this).apply {
+            hint = "Enter PIN (4-8 digits)"
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            filters = arrayOf(InputFilter.LengthFilter(8))
+        }
+
+        val confirmInput = android.widget.EditText(this).apply {
+            hint = "Confirm PIN"
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            filters = arrayOf(InputFilter.LengthFilter(8))
+        }
+
+        layout.addView(pinInput)
+        layout.addView(confirmInput)
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(layout)
+            .setPositiveButton("Save") { _, _ ->
+                val pin = pinInput.text.toString().trim()
+                val confirm = confirmInput.text.toString().trim()
+                if (!PinAuth.isValidPin(pin)) {
+                    Toast.makeText(this, "PIN must be 4-8 digits", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                if (pin != confirm) {
+                    Toast.makeText(this, "PINs do not match", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val salt = PinAuth.generateSalt()
+                val hash = PinAuth.hashPin(pin, salt)
+                lifecycleScope.launch {
+                    userPreferences.saveServerAuthPin(hash, salt)
+                    userPreferences.saveServerAuthEnabled(true)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun disableServerPin() {
+        lifecycleScope.launch {
+            userPreferences.saveServerAuthEnabled(false)
+            userPreferences.clearServerAuthPin()
+        }
     }
 
     

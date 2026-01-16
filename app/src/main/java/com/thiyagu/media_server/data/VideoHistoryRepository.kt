@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 class VideoHistoryRepository(private val dao: VideoHistoryDao) {
 
     suspend fun savePosition(videoUrl: String, position: Long) = withContext(Dispatchers.IO) {
-        if (position > 5000) {
+        if (position >= 4000) {
             val entity = VideoHistoryEntity(
                 videoUrl = videoUrl,
                 position = position,
@@ -33,5 +33,9 @@ class VideoHistoryRepository(private val dao: VideoHistoryDao) {
     
     suspend fun clearHistory() = withContext(Dispatchers.IO) {
         dao.clearAll()
+    }
+
+    suspend fun clearPosition(videoUrl: String) = withContext(Dispatchers.IO) {
+        dao.deleteHistory(videoUrl)
     }
 }

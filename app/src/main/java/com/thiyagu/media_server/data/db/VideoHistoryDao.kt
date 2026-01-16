@@ -18,4 +18,7 @@ interface VideoHistoryDao {
 
     @Query("DELETE FROM video_history")
     suspend fun clearAll()
+
+    @Query("DELETE FROM video_history WHERE videoUrl = :videoUrl")
+    suspend fun deleteHistory(videoUrl: String)
 }

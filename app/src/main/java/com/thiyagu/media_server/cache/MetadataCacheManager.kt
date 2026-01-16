@@ -187,14 +187,13 @@ class MetadataCacheManager(
      */
     fun isCacheValid(): Boolean {
         val cache = loadCache() ?: return false
-        
-        // Check if cache is for the same folder
+        return isCacheValid(cache)
+    }
+
+    fun isCacheValid(cache: CacheData): Boolean {
         if (cache.folderUri != treeUri.toString()) return false
-        
-        // Check age (24 hours)
         val age = System.currentTimeMillis() - cache.timestamp
         val maxAge = 24 * 60 * 60 * 1000L // 24 hours
-        
         return age < maxAge
     }
     

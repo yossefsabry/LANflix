@@ -11,6 +11,7 @@ import io.ktor.server.netty.*
 import io.ktor.server.engine.*
 import io.ktor.server.plugins.autohead.*
 import io.ktor.server.plugins.partialcontent.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
@@ -19,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,15 +50,22 @@ import java.util.concurrent.atomic.AtomicInteger
 class KtorMediaStreamingServer(
     internal val appContext: Context,
     internal val treeUri: Uri,
+    private val userPreferences: com.thiyagu.media_server.data.UserPreferences,
     private val port: Int
 ) {
     private var server: ApplicationEngine? = null
+
+    internal val clientStatsTracker = ClientStatsTracker()
     
     // Metadata Cache Manager for fast video list retrieval
     internal val cacheManager = com.thiyagu.media_server.cache.MetadataCacheManager(appContext, treeUri)
     
     // structured concurrency scope
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    internal val authManager = ServerAuthManager(userPreferences, scope)
+
+    @Volatile private var isReady = false
+    @Volatile private var readyAtMs: Long = 0L
     
     // Optimized Caches for O(1) Access and Thread Safety
     // filename -> DocumentFile
@@ -98,6 +107,13 @@ class KtorMediaStreamingServer(
      */
     fun start() {
         scope.launch {
+            scope.launch {
+                while (currentCoroutineContext().isActive) {
+                    clientStatsTracker.pruneStaleClients()
+                    delay(5_000)
+                }
+            }
+
             // Build metadata cache on startup for instant client access
             // And start watching for file changes
             try {
@@ -123,11 +139,21 @@ class KtorMediaStreamingServer(
                         deflate { priority = 10.0; minimumSize(1024) }
                     }
                     install(io.ktor.server.plugins.cachingheaders.CachingHeaders)
+
+                    intercept(ApplicationCallPipeline.Setup) {
+                        val isDiscoveryPing = call.request.headers["X-Lanflix-Discovery"] == "1" &&
+                            call.request.path() == "/api/ping"
+                        if (!isDiscoveryPing && authManager.isAuthorized(call)) {
+                            clientStatsTracker.markSeen(getClientKey(call))
+                        }
+                    }
                     
                     routing {
                         configureServerRoutes(this@KtorMediaStreamingServer)
                     }
-                }.start(wait = true)
+                }.start(wait = false)
+                isReady = true
+                readyAtMs = System.currentTimeMillis()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -223,9 +249,14 @@ class KtorMediaStreamingServer(
      */
     fun stop() {
         cacheManager.stopWatching()
+        isReady = false
         server?.stop(1000, 5000)
         scope.cancel()
     }
+
+    fun isServerReady(): Boolean = isReady
+
+    fun readySinceMs(): Long = readyAtMs
     
     // Refresh cache only if needed (time-based)
     fun refreshCacheIfNeeded() {
@@ -249,9 +280,31 @@ class KtorMediaStreamingServer(
     companion object {
         val activeConnections = java.util.concurrent.atomic.AtomicInteger(0)
     }
+    
+    internal fun getClientKey(call: ApplicationCall): String {
+        val headerId = call.request.headers["X-Lanflix-Client"]
+        val queryId = call.request.queryParameters["client"]
+        val candidate = (headerId ?: queryId)?.trim()
+        if (!candidate.isNullOrEmpty() && candidate.length <= 64 && candidate.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
+            return candidate
+        }
+
+        val remoteAddress = call.request.local.remoteAddress
+        if (remoteAddress.isNotBlank()) return remoteAddress
+
+        val remoteHost = call.request.local.remoteHost
+        if (remoteHost.isNotBlank()) return remoteHost
+
+        return "unknown"
+    }
+    
+    fun getConnectionStats(): ConnectionStats {
+        return clientStatsTracker.getStats()
+    }
 
     internal class TrackingInputStream(
-        private val wrapped: java.io.InputStream
+        private val wrapped: java.io.InputStream,
+        private val onClose: (() -> Unit)? = null
     ) : java.io.InputStream() {
         
         init {
@@ -272,6 +325,7 @@ class KtorMediaStreamingServer(
                 wrapped.close()
             } finally {
                 activeConnections.decrementAndGet()
+                onClose?.invoke()
             }
         }
     }
