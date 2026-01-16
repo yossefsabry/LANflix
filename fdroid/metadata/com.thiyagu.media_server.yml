@@ -1,0 +1,37 @@
+Categories:
+  - Multimedia
+  - Internet
+License: MIT
+WebSite: https://github.com/yossefsabry/LANflix
+SourceCode: https://github.com/yossefsabry/LANflix
+IssueTracker: https://github.com/yossefsabry/LANflix/issues
+Changelog: https://github.com/yossefsabry/LANflix/releases
+Name: LANflix
+Summary: Stream media over your local network
+Description: |-
+  LANflix streams video files over your local network with no cloud accounts.
+
+  Run the app as a server to host a local media folder and as a client to
+  browse and play media on another device. Servers are auto-discovered over
+  Wi-Fi, and playback supports resume with configurable history retention.
+
+  Features:
+  - Local-only media streaming
+  - Automatic server discovery
+  - Resume playback with history retention controls
+  - Media management dashboard
+
+RepoType: git
+Repo: https://github.com/yossefsabry/LANflix.git
+
+Builds:
+  - versionName: 1.0
+    versionCode: 1
+    commit: v1.0
+    gradle:
+      - assembleRelease
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 1.0
+CurrentVersionCode: 1

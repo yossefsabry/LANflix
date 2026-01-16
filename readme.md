@@ -69,5 +69,9 @@ The application includes a robust video resume capability:
 *   **Database Storage**: Uses a local optimized database to store playback history efficienty.
 *   **Configurable**: Go to App Settings to change how long history is kept (5, 10, 20, 30 Days, or Never).
 
+## Releases and F-Droid
+See `docs/RELEASING.md` for release tags and `docs/FDROID.md` for F-Droid
+submission notes.
+
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
