@@ -41,7 +41,10 @@ class WelcomeActivity : AppCompatActivity() {
         // Handle Window Insets
         val rootView = findViewById<View>(R.id.welcome_root)
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, windowInsets ->
-            val insets = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            val insets = windowInsets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.systemBars() or
+                    androidx.core.view.WindowInsetsCompat.Type.ime()
+            )
             
             // Apply insets to the scrolling content container, preserving its original padding
             // We want the ScrollView to span the whole screen (so you can scroll behind bars), 

@@ -10,11 +10,16 @@
         <item name="android:navigationBarColor">@color/lanflix_surface</item>
         <item name="android:textColorPrimary">@color/lanflix_text_main</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
     </style>
 
     <style name="WelcomeTheme" parent="AppTheme">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="NoActionBarTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowSoftInputMode">adjustResize</item>
     </style>
 
     <style name="CircleImage">
