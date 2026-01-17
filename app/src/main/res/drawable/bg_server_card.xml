@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base gradient so the card works in both light and dark mode -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:startColor="@color/lanflix_surface_light"
+                android:endColor="@color/lanflix_surface"
+                android:type="linear" />
+        </shape>
+    </item>
+
+    <!-- Warm accent glow -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.15"
+                android:centerY="0.2"
+                android:gradientRadius="220dp"
+                android:startColor="#66FAC638"
+                android:endColor="#00FAC638" />
+        </shape>
+    </item>
+
+    <!-- Subtle highlight on the opposite edge -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.85"
+                android:centerY="0.85"
+                android:gradientRadius="260dp"
+                android:startColor="#26FFFFFF"
+                android:endColor="#00FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Soft wash to smooth contrast -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#08FFFFFF" />
+        </shape>
+    </item>
+</layer-list>
