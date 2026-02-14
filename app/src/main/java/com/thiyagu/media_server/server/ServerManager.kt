@@ -7,7 +7,6 @@ import com.thiyagu.media_server.service.MediaServerService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
@@ -19,7 +18,10 @@ class ServerManager(private val context: Context, private val userPreferences: c
     val state: StateFlow<ServerState> = _state
 
     private var serverStartTime: Long = 0L
-    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+
+    companion object {
+        const val DEFAULT_PORT = 8888
+    }
 
     fun getStartTime(): Long {
         return serverStartTime
@@ -29,30 +31,50 @@ class ServerManager(private val context: Context, private val userPreferences: c
         return server?.getConnectionStats() ?: ConnectionStats(0, 0, 0)
     }
 
-    fun startServer(folderUri: Uri, port: Int = 8888) {
-        // Prevent starting if already running
-        if (_state.value is ServerState.Running || _state.value is ServerState.Starting || _state.value is ServerState.Stopping) return
-        
-        // Start Service first
-        val intent = Intent(context, MediaServerService::class.java)
+    fun requestStartServer(folderUri: Uri, port: Int = DEFAULT_PORT) {
+        val intent = Intent(context, MediaServerService::class.java).apply {
+            action = MediaServerService.ACTION_START
+            putExtra(MediaServerService.EXTRA_FOLDER_URI, folderUri.toString())
+            putExtra(MediaServerService.EXTRA_PORT, port)
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             context.startForegroundService(intent)
         } else {
             context.startService(intent)
         }
-        
-        // Then start Ktor logic
-        startKtorInternal(folderUri, port)
     }
 
-    private fun startKtorInternal(folderUri: Uri, port: Int) {
+    fun requestRestartServer(folderUri: Uri, port: Int = DEFAULT_PORT) {
+        val intent = Intent(context, MediaServerService::class.java).apply {
+            action = MediaServerService.ACTION_RESTART
+            putExtra(MediaServerService.EXTRA_FOLDER_URI, folderUri.toString())
+            putExtra(MediaServerService.EXTRA_PORT, port)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
+
+    fun requestStopServer() {
+        val intent = Intent(context, MediaServerService::class.java).apply {
+            action = MediaServerService.ACTION_STOP
+        }
+        context.startService(intent)
+    }
+
+    internal fun startServerInternal(folderUri: Uri, port: Int = DEFAULT_PORT): Boolean {
+        // Prevent starting if already running
+        if (_state.value is ServerState.Running || _state.value is ServerState.Starting || _state.value is ServerState.Stopping) return true
+
         try {
             _state.value = ServerState.Starting
             
             val ip = getLocalIpAddress()
             if (ip == null) {
                 _state.value = ServerState.Error("No network connection found. Connect to Wi-Fi.")
-                return
+                return false
             }
 
             server = KtorMediaStreamingServer(context, folderUri, userPreferences, port)
@@ -65,36 +87,31 @@ class ServerManager(private val context: Context, private val userPreferences: c
             
             // Register NSD
             registerService(port)
+            return true
             
         } catch (e: Exception) {
             e.printStackTrace()
-            stopServer() // Cleanup will also stop service
+            stopServerInternal()
             _state.value = ServerState.Error("Failed to start server: ${e.message}")
+            return false
         }
     }
 
-    fun stopServer() {
+    internal fun stopServerInternal() {
         if (_state.value is ServerState.Stopped || _state.value is ServerState.Stopping) return
 
         _state.value = ServerState.Stopping
-        scope.launch {
-            try {
-                server?.stop()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                server = null
-                serverStartTime = 0L // Reset logic
-                _state.value = ServerState.Stopped
-                
-                // Unregister NSD
-                unregisterService()
-                
-                // Stop Service
-                val intent = Intent(context, MediaServerService::class.java)
-                intent.action = MediaServerService.ACTION_STOP
-                context.startService(intent) // Send stop action
-            }
+        try {
+            server?.stop()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            server = null
+            serverStartTime = 0L // Reset logic
+            _state.value = ServerState.Stopped
+            
+            // Unregister NSD
+            unregisterService()
         }
     }
     

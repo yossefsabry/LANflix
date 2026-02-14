@@ -62,6 +62,9 @@ class ProfileActivity : AppCompatActivity() {
             setupOption(binding.optPrivacy, R.drawable.ic_shield, "Privacy & Security", "History, Cache, Permissions") {
                 startActivity(Intent(this, PrivacySecurityActivity::class.java))
             }
+            setupOption(binding.optDiagnostics, R.drawable.ic_speed, "Diagnostics", "Seek, Throughput, File Checks") {
+                startActivity(Intent(this, DiagnosticsActivity::class.java))
+            }
             setupOption(binding.optNetwork, R.drawable.ic_wifi, "Network Info", "192.168.1.45 • Port 8080") {
                 startActivity(Intent(this, NetworkInfoActivity::class.java))
             }

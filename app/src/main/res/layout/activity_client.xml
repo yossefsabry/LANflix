@@ -149,6 +149,20 @@
         android:visibility="gone"
         android:elevation="10dp">
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_disconnect"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="16dp"
+            android:text="Disconnect"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            app:backgroundTint="@color/lanflix_surface"
+            app:cornerRadius="12dp"
+            app:strokeColor="#1AFFFFFF"
+            app:strokeWidth="1dp" />
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

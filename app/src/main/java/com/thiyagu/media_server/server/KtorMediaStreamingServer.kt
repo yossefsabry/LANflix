@@ -3,6 +3,7 @@ package com.thiyagu.media_server.server
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import android.provider.DocumentsContract
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.compression.*
@@ -10,7 +11,6 @@ import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.netty.*
 import io.ktor.server.engine.*
 import io.ktor.server.plugins.autohead.*
-import io.ktor.server.plugins.partialcontent.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -72,6 +72,19 @@ class KtorMediaStreamingServer(
     internal val cachedFilesMap = ConcurrentHashMap<String, DocumentFile>()
     // Ordered list for pagination
     internal val allVideoFiles = java.util.Collections.synchronizedList(java.util.ArrayList<DocumentFile>())
+
+    internal data class CachedVideoEntry(
+        val name: String,
+        val path: String,
+        val size: Long,
+        val lastModified: Long,
+        val documentId: String?
+    )
+
+    private val videoIndexByPath = ConcurrentHashMap<String, CachedVideoEntry>()
+    private val videoIndexByName = ConcurrentHashMap<String, CopyOnWriteArrayList<String>>()
+    @Volatile private var videoIndexTimestamp: Long = 0L
+    private val videoIndexLock = Any()
     
     // Scanning State - Delegates to MetadataCacheManager
     // We map the MetadataCacheManager.ScanStatus to the local type to maintain compatibility
@@ -117,7 +130,8 @@ class KtorMediaStreamingServer(
             // Build metadata cache on startup for instant client access
             // And start watching for file changes
             try {
-                cacheManager.refreshIfNeeded()
+                val cache = cacheManager.refreshIfNeeded()
+                updateVideoIndex(cache)
                 cacheManager.startWatching()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -131,12 +145,28 @@ class KtorMediaStreamingServer(
                     callGroupSize = 32         // Threads for processing application logic (Pipeline)
                     responseWriteTimeoutSeconds = 30 // Allow ample time for writes
                 }) {
-                    install(PartialContent)
                     install(AutoHeadResponse)
                     
                     install(io.ktor.server.plugins.compression.Compression) {
-                        gzip { priority = 1.0 }
-                        deflate { priority = 10.0; minimumSize(1024) }
+                        gzip {
+                            priority = 1.0
+                            matchContentType(
+                                ContentType.Text.Any,
+                                ContentType.Application.Json,
+                                ContentType.Application.JavaScript,
+                                ContentType.Application.Xml
+                            )
+                        }
+                        deflate {
+                            priority = 10.0
+                            minimumSize(1024)
+                            matchContentType(
+                                ContentType.Text.Any,
+                                ContentType.Application.Json,
+                                ContentType.Application.JavaScript,
+                                ContentType.Application.Xml
+                            )
+                        }
                     }
                     install(io.ktor.server.plugins.cachingheaders.CachingHeaders)
 
@@ -202,6 +232,7 @@ class KtorMediaStreamingServer(
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                      bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, 75, stream)
                 } else {
+                     @Suppress("DEPRECATION")
                      bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP, 75, stream)
                 }
                 
@@ -235,7 +266,8 @@ class KtorMediaStreamingServer(
      */
     internal fun refreshCache() {
         scope.launch(Dispatchers.IO) {
-            cacheManager.buildCache()
+            val cache = cacheManager.buildCache()
+            updateVideoIndex(cache)
         }
     }
     
@@ -257,6 +289,71 @@ class KtorMediaStreamingServer(
     fun isServerReady(): Boolean = isReady
 
     fun readySinceMs(): Long = readyAtMs
+
+    internal fun refreshVideoIndexFromCacheIfStale(): Boolean {
+        val cache = cacheManager.loadCache() ?: return false
+        if (cache.folderUri != treeUri.toString()) return false
+        if (cache.timestamp == videoIndexTimestamp) return true
+        updateVideoIndex(cache)
+        return true
+    }
+
+    internal fun getVideoEntry(path: String?, filename: String?): CachedVideoEntry? {
+        if (!path.isNullOrEmpty()) {
+            val byPath = videoIndexByPath[path]
+            if (byPath != null) return byPath
+        }
+        if (!filename.isNullOrEmpty()) {
+            val candidates = videoIndexByName[filename] ?: return null
+            if (candidates.size == 1) {
+                return videoIndexByPath[candidates[0]]
+            }
+        }
+        return null
+    }
+
+    internal fun updateEntryFromDocumentFile(path: String?, file: DocumentFile): CachedVideoEntry? {
+        val name = file.name ?: return null
+        val resolvedPath = path ?: name
+        val documentId = try {
+            DocumentsContract.getDocumentId(file.uri)
+        } catch (_: Exception) {
+            null
+        }
+        val entry = CachedVideoEntry(
+            name = name,
+            path = resolvedPath,
+            size = file.length(),
+            lastModified = file.lastModified(),
+            documentId = documentId
+        )
+        videoIndexByPath[resolvedPath] = entry
+        videoIndexByName.computeIfAbsent(name) { CopyOnWriteArrayList() }.add(resolvedPath)
+        return entry
+    }
+
+    internal fun buildDocumentUri(documentId: String): Uri {
+        return DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+    }
+
+    internal fun resolveDocumentFileByPath(path: String): DocumentFile? {
+        return try {
+            val rootDir = DocumentFile.fromTreeUri(appContext, treeUri) ?: return null
+            var current: DocumentFile? = rootDir
+            val parts = path.split("/").filter { it.isNotEmpty() }
+            for (part in parts) {
+                val next = current?.findFile(part)
+                if (next != null) {
+                    current = next
+                } else {
+                    return null
+                }
+            }
+            current
+        } catch (_: Exception) {
+            null
+        }
+    }
     
     // Refresh cache only if needed (time-based)
     fun refreshCacheIfNeeded() {
@@ -329,6 +426,68 @@ class KtorMediaStreamingServer(
             }
         }
     }
+
+    internal class BoundedInputStream(
+        private val wrapped: java.io.InputStream,
+        private var remaining: Long
+    ) : java.io.InputStream() {
+        override fun read(): Int {
+            if (remaining <= 0) return -1
+            val value = wrapped.read()
+            if (value >= 0) remaining -= 1
+            return value
+        }
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int {
+            if (remaining <= 0) return -1
+            val toRead = if (len.toLong() > remaining) remaining.toInt() else len
+            val count = wrapped.read(b, off, toRead)
+            if (count > 0) remaining -= count.toLong()
+            return count
+        }
+
+        override fun skip(n: Long): Long {
+            if (remaining <= 0) return 0
+            val toSkip = if (n > remaining) remaining else n
+            val skipped = wrapped.skip(toSkip)
+            if (skipped > 0) remaining -= skipped
+            return skipped
+        }
+
+        override fun available(): Int {
+            val available = wrapped.available()
+            val remainingInt = if (remaining > Int.MAX_VALUE.toLong()) Int.MAX_VALUE else remaining.toInt()
+            return if (remainingInt < available) remainingInt else available
+        }
+
+        override fun close() {
+            wrapped.close()
+        }
+    }
+
+    private fun updateVideoIndex(cache: com.thiyagu.media_server.cache.MetadataCacheManager.CacheData) {
+        synchronized(videoIndexLock) {
+            if (cache.folderUri != treeUri.toString()) return
+            if (cache.timestamp == videoIndexTimestamp) return
+
+            videoIndexByPath.clear()
+            videoIndexByName.clear()
+
+            cache.videos.forEach { video ->
+                val entry = CachedVideoEntry(
+                    name = video.name,
+                    path = video.path,
+                    size = video.size,
+                    lastModified = video.lastModified,
+                    documentId = video.documentId
+                )
+                videoIndexByPath[video.path] = entry
+                videoIndexByName.computeIfAbsent(video.name) { CopyOnWriteArrayList() }.add(video.path)
+            }
+
+            videoIndexTimestamp = cache.timestamp
+        }
+    }
     // Helper Methods
     // Helper Methods
     internal fun getOrStartDirectoryListing(dir: DocumentFile): CachedDirectory {
@@ -364,17 +523,6 @@ class KtorMediaStreamingServer(
         try {
             // Use ContentResolver directly to scan without blocking
             val dirId = android.provider.DocumentsContract.getDocumentId(dir.uri)
-            val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
-                treeUri, // Use the root tree URI for building child URIs? Actually, should use the dir URI if it's the tree root?
-                // The API requires the Tree URI for buildChildDocumentsUriUsingTree.
-                // If 'dir' is a subdir, we need to be careful.
-                // Safest is to extract the tree authority/root from dir.uri, but we have server.treeUri which is likely the authority base.
-                dirId
-            )
-            
-            // Note: `treeUri` is the root granted URI. `dir.uri` is the specific directory URI.
-            // buildChildDocumentsUriUsingTree takes (treeUri, parentDocumentId).
-            
             val cols = arrayOf(
                 android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,

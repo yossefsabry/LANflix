@@ -44,6 +44,14 @@ class ClientStatsTracker(
         }
     }
 
+    fun markDisconnected(clientKey: String) {
+        lastSeenMsByClientKey.remove(clientKey)
+        val active = activeStreamsByClientKey[clientKey]?.get() ?: 0
+        if (active <= 0) {
+            activeStreamsByClientKey.remove(clientKey)
+        }
+    }
+
     fun pruneStaleClients() {
         val now = clockMs()
         for ((clientKey, lastSeenMs) in lastSeenMsByClientKey) {
@@ -84,4 +92,3 @@ class ClientStatsTracker(
         )
     }
 }
-

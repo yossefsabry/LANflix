@@ -1,10 +1,10 @@
-package com.thiyagu.media_server.server
+package com.thiyagu.media_server.server.pages
 
 import java.io.Writer
 import java.net.URLEncoder
 
-object HtmlTemplates {
-    fun Writer.respondHtmlPage(
+object HomePageTemplate {
+    fun Writer.respondHomePage(
         mode: String?,
         pathParam: String,
         themeParam: String
@@ -326,8 +326,8 @@ object HtmlTemplates {
     <!-- Connection Lost Overlay -->
     <div id="connection-lost">
         <span class="material-symbols-rounded text-6xl text-red-500 mb-4 animate-bounce">wifi_off</span>
-        <h2 class="text-2xl font-bold mb-2">Connection Lost</h2>
-        <p class="text-text-main/60 mb-6 text-center max-w-xs">Checking signal...</p>
+        <h2 id="connection-status-title" class="text-2xl font-bold mb-2">Connection Lost</h2>
+        <p id="connection-status-detail" class="text-text-main/60 mb-6 text-center max-w-xs">Reconnecting...</p>
         <button onclick="window.location.reload()" class="bg-surface-light px-6 py-2 rounded-full font-medium active:scale-95 transition-transform">Retry Now</button>
     </div>
     
@@ -521,7 +521,10 @@ object HtmlTemplates {
                             virtualScroll: false,
                             isSearching: false,
                             searchQuery: '',
-                            searchTimeout: null
+                            searchTimeout: null,
+                            connectionLost: false,
+                            connectionLostAt: 0,
+                            heartbeatFailures: 0
                         },
 
                         init() {
@@ -542,6 +545,19 @@ object HtmlTemplates {
                             
                             // Initialize Overlay
                             this.initOverlay();
+                            this.initConnectionOverlay();
+
+                            window.addEventListener('online', () => {
+                                if (this.triggerHeartbeat) this.triggerHeartbeat();
+                            });
+                            window.addEventListener('offline', () => {
+                                this.handleHeartbeatFailure('offline');
+                            });
+                            document.addEventListener('visibilitychange', () => {
+                                if (!document.hidden && this.triggerHeartbeat) this.triggerHeartbeat();
+                            });
+                            window.addEventListener('pagehide', () => this.sendDisconnectBeacon());
+                            window.addEventListener('beforeunload', () => this.sendDisconnectBeacon());
 
                             // polling
                             this.startPolling();
@@ -567,6 +583,80 @@ object HtmlTemplates {
                                 overlay.classList.remove('opacity-0', 'pointer-events-none');
                                 overlay.classList.add('opacity-100');
                             };
+                        },
+
+                        initConnectionOverlay() {
+                            const overlay = document.getElementById('connection-lost');
+                            const title = document.getElementById('connection-status-title');
+                            const detail = document.getElementById('connection-status-detail');
+
+                            this.setConnectionOverlay = (visible, titleText, detailText) => {
+                                if (!overlay) return;
+                                if (titleText && title) title.textContent = titleText;
+                                if (detailText && detail) detail.textContent = detailText;
+                                if (visible) overlay.classList.add('visible');
+                                else overlay.classList.remove('visible');
+                            };
+                        },
+
+                        sendDisconnectBeacon() {
+                            try {
+                                const url = withAuthParam('/api/bye');
+                                if (navigator.sendBeacon) {
+                                    navigator.sendBeacon(url);
+                                } else {
+                                    fetch(url, { method: 'POST', keepalive: true, cache: 'no-store' });
+                                }
+                            } catch (e) {}
+                        },
+
+                        handleHeartbeatFailure(reason) {
+                            if (document.hidden) return;
+                            if (reason === 'offline') {
+                                if (!this.state.connectionLost) {
+                                    this.state.connectionLost = true;
+                                    this.state.connectionLostAt = Date.now();
+                                }
+                                if (this.setConnectionOverlay) {
+                                    this.setConnectionOverlay(true, 'Offline', 'Waiting for network...');
+                                }
+                                return;
+                            }
+
+                            this.state.heartbeatFailures += 1;
+                            if (this.state.connectionLost || this.state.heartbeatFailures >= 3) {
+                                if (!this.state.connectionLost) {
+                                    this.state.connectionLost = true;
+                                    this.state.connectionLostAt = Date.now();
+                                }
+                                if (this.setConnectionOverlay) {
+                                    this.setConnectionOverlay(true, 'Connection Lost', 'Reconnecting to server...');
+                                }
+                            }
+                        },
+
+                        handleHeartbeatSuccess() {
+                            const wasLost = this.state.connectionLost;
+                            this.state.heartbeatFailures = 0;
+                            if (wasLost) {
+                                const downtime = Date.now() - (this.state.connectionLostAt || Date.now());
+                                this.state.connectionLost = false;
+                                this.state.connectionLostAt = 0;
+                                if (this.setConnectionOverlay) this.setConnectionOverlay(false);
+                                if (downtime > 15000) {
+                                    this.refreshAfterReconnect();
+                                }
+                                return;
+                            }
+                            if (this.setConnectionOverlay) this.setConnectionOverlay(false);
+                        },
+
+                        refreshAfterReconnect() {
+                            this.state.page = 1;
+                            this.state.items = [];
+                            this.state.hasMore = true;
+                            this.state.isLoading = false;
+                            this.handleRoute(false);
                         },
 
                         navigate(url) {
@@ -1061,24 +1151,19 @@ object HtmlTemplates {
                         },
 
                         startHeartbeat() {
-                            const overlay = document.getElementById('connection-lost');
-                            const show = () => overlay && overlay.classList.add('visible');
-                            const hide = () => overlay && overlay.classList.remove('visible');
-
                             const heartbeat = async () => {
-                                if (document.hidden || !navigator.onLine) {
-                                    show();
-                                    return;
-                                }
+                                if (document.hidden) return;
+                                if (!navigator.onLine) return this.handleHeartbeatFailure('offline');
                                 try {
                                     const res = await apiFetch('/api/ping', { cache: 'no-store' });
-                                    if (res.ok) hide();
-                                    else show();
+                                    if (res.ok) this.handleHeartbeatSuccess();
+                                    else this.handleHeartbeatFailure('server');
                                 } catch (e) {
-                                    show();
+                                    this.handleHeartbeatFailure('server');
                                 }
                             };
 
+                            this.triggerHeartbeat = heartbeat;
                             heartbeat();
                             this.heartbeatTimer = setInterval(heartbeat, 7000);
                         },
@@ -1157,7 +1242,7 @@ object HtmlTemplates {
     
     <!-- Bottom Navigation -->
     <nav class="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-white/5 px-6 py-2 pb-5 z-50">
-        <div class="flex items-center justify-between max-w-sm mx-auto">
+        <div class="flex items-center justify-between max-w-md mx-auto">
             <a href="/?theme=$themeParam" id="nav-home" class="flex flex-col items-center gap-1 ${if (mode != "tree") "text-primary" else "text-text-sub"}">
                 <span class="material-symbols-rounded text-2xl">home</span>
                 <span class="text-[10px] font-bold">Home</span>
@@ -1165,6 +1250,11 @@ object HtmlTemplates {
             
             <a href="/?mode=tree&theme=$themeParam" id="nav-tree" class="w-14 h-14 -mt-8 rounded-full flex items-center justify-center shadow-[0_0_20px_${if (mode == "tree") "rgba(250,198,56,0.3)" else "rgba(0,0,0,0)"}] border-4 border-background ${if (mode == "tree") "bg-primary text-black" else "bg-surface-light text-text-sub"} active:scale-90 transition-all">
                 <span class="material-symbols-rounded text-3xl">folder</span>
+            </a>
+            
+            <a href="/diagnostics?theme=$themeParam" onclick="this.href = withAuthParam('/diagnostics?theme=$themeParam')" class="flex flex-col items-center gap-1 text-text-sub hover:text-text-main transition-colors">
+                <span class="material-symbols-rounded text-2xl">speed</span>
+                <span class="text-[10px] font-medium">Diagnostics</span>
             </a>
             
             <a href="/settings" class="flex flex-col items-center gap-1 text-text-sub hover:text-text-main transition-colors">
@@ -1182,183 +1272,4 @@ object HtmlTemplates {
         flush()
     }
 
-    fun Writer.respondLoginPage(themeParam: String) {
-        write("""
-<!DOCTYPE html>
-<html lang="en" class="${if (themeParam == "dark") "dark" else ""}">
-<head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
-    <meta content="${if (themeParam == "dark") "#0a0a0a" else "#F4F4F5"}" name="theme-color"/>
-    <title>LANflix - Unlock</title>
-    <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: ${if (themeParam == "dark") """
-                        {
-                            primary: "#FAC638",
-                            background: "#0a0a0a",
-                            surface: "#171717",
-                            "surface-light": "#262626",
-                            "text-main": "#f2f2f2",
-                            "text-sub": "#9ca3af"
-                        }
-                    """ else """
-                        {
-                            primary: "#D4A526",
-                            background: "#F4F4F5",
-                            surface: "#FFFFFF",
-                            "surface-light": "#F9FAFB",
-                            "text-main": "#09090B",
-                            "text-sub": "#71717A"
-                        }
-                    """},
-                    fontFamily: {
-                        display: ['Spline Sans', 'sans-serif']
-                    }
-                }
-            }
-        };
-    </script>
-    <style>
-        :root {
-            --color-primary: ${if (themeParam == "dark") "#FAC638" else "#D4A526"};
-        }
-        body {
-            font-family: 'Spline Sans', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-font-smoothing: antialiased;
-        }
-    </style>
-</head>
-<body class="bg-background text-text-main min-h-screen">
-    <main class="min-h-screen flex items-center justify-center px-6 py-10">
-        <div class="w-full max-w-sm bg-surface/95 border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-xl font-bold">LF</div>
-                <div>
-                    <div class="text-xl font-bold">LANflix</div>
-                    <div class="text-xs text-text-sub">Server PIN required</div>
-                </div>
-            </div>
-
-            <label class="text-xs font-bold text-text-sub">PIN</label>
-            <input id="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8"
-                class="mt-2 w-full bg-surface-light border border-white/10 rounded-2xl py-3 px-4 text-lg tracking-widest text-center placeholder:text-text-sub/40 focus:ring-1 focus:ring-primary focus:border-primary/50 outline-none"
-                placeholder="1234" autocomplete="one-time-code"/>
-
-            <button id="pin-submit" class="mt-4 w-full bg-primary text-black font-bold rounded-2xl py-3 transition-transform active:scale-95">
-                Unlock
-            </button>
-
-            <p id="pin-error" class="mt-3 text-sm text-red-400 hidden">Incorrect PIN.</p>
-            <p class="mt-4 text-xs text-text-sub">
-                Set or change the PIN from App Settings on the server device.
-            </p>
-        </div>
-    </main>
-
-    <script>
-        (function() {
-            const pinInput = document.getElementById('pin-input');
-            const submitBtn = document.getElementById('pin-submit');
-            const errorEl = document.getElementById('pin-error');
-
-            function getPinKey() { return 'lanflix_pin_' + window.location.host; }
-            function getClientKey() { return 'lanflix_client_' + window.location.host; }
-
-            function setPin(pin) {
-                if (pin) localStorage.setItem(getPinKey(), pin);
-            }
-
-            function clearPin() {
-                localStorage.removeItem(getPinKey());
-            }
-
-            function setError(message) {
-                if (!errorEl) return;
-                if (message) {
-                    errorEl.textContent = message;
-                    errorEl.classList.remove('hidden');
-                } else {
-                    errorEl.classList.add('hidden');
-                }
-            }
-
-            function setLoading(isLoading) {
-                submitBtn.disabled = isLoading;
-                submitBtn.textContent = isLoading ? 'Checking...' : 'Unlock';
-                if (isLoading) {
-                    submitBtn.classList.add('opacity-70');
-                } else {
-                    submitBtn.classList.remove('opacity-70');
-                }
-            }
-
-            function buildRedirect(pin) {
-                const params = new URLSearchParams();
-                const urlParams = new URLSearchParams(window.location.search);
-                const theme = urlParams.get('theme') || localStorage.getItem('lanflix_theme') || 'dark';
-                params.set('theme', theme);
-                const lastMode = localStorage.getItem('lanflix_last_mode');
-                const lastPath = localStorage.getItem('lanflix_last_path');
-                if (lastMode === 'tree') {
-                    params.set('mode', 'tree');
-                    if (lastPath) params.set('path', lastPath);
-                }
-                params.set('pin', pin);
-                const clientId = localStorage.getItem(getClientKey()) || localStorage.getItem('lanflix_client');
-                if (clientId) params.set('client', clientId);
-                return '/?' + params.toString();
-            }
-
-            async function verify() {
-                const pin = (pinInput.value || '').trim();
-                if (!pin) {
-                    setError('PIN required.');
-                    pinInput.focus();
-                    return;
-                }
-                setError('');
-                setLoading(true);
-                try {
-                    const res = await fetch('/api/ping?pin=' + encodeURIComponent(pin), { cache: 'no-store' });
-                    const data = await res.json().catch(function() { return null; });
-                    if (data && data.authorized) {
-                        setPin(pin);
-                        window.location.href = buildRedirect(pin);
-                        return;
-                    }
-                    clearPin();
-                    setError('Incorrect PIN.');
-                } catch (e) {
-                    setError('Unable to reach server.');
-                } finally {
-                    setLoading(false);
-                }
-            }
-
-            submitBtn.addEventListener('click', verify);
-            pinInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') verify();
-            });
-
-            const urlPin = new URLSearchParams(window.location.search).get('pin');
-            if (urlPin) {
-                pinInput.value = urlPin;
-                setTimeout(verify, 50);
-            } else {
-                pinInput.focus();
-            }
-        })();
-    </script>
-</body>
-</html>
-""")
-        flush()
-    }
 }

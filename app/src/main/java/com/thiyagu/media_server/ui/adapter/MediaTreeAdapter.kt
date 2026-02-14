@@ -78,7 +78,7 @@ class MediaTreeAdapter(
         if (node.type == NodeType.FOLDER) {
             holder.sizeText?.text = if (node.isLoaded) "${node.children.size} items" else "..."
             holder.typeIcon?.visibility = View.VISIBLE
-            holder.typeIcon?.setImageResource(R.drawable.ic_folder_open ?: android.R.drawable.ic_menu_more)
+            holder.typeIcon?.setImageResource(R.drawable.ic_folder_open)
             holder.typeIcon?.alpha = 0.5f 
             holder.typeIcon?.setPadding(20, 20, 20, 20)
             

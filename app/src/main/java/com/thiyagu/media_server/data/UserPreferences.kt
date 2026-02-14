@@ -37,6 +37,9 @@ class UserPreferences(private val context: Context) {
         val SERVER_AUTH_PIN_HASH_KEY = stringPreferencesKey("server_auth_pin_hash")
         val SERVER_AUTH_PIN_SALT_KEY = stringPreferencesKey("server_auth_pin_salt")
         val NOTIFICATIONS_PROMPTED_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("notifications_prompted")
+        val SERVER_RUNNING_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("server_running")
+        val SERVER_PORT_KEY = androidx.datastore.preferences.core.intPreferencesKey("server_port")
+        const val DEFAULT_SERVER_PORT = 8888
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data
@@ -69,6 +72,16 @@ class UserPreferences(private val context: Context) {
             preferences[NOTIFICATIONS_PROMPTED_KEY] ?: false
         }
 
+    val serverRunningFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[SERVER_RUNNING_KEY] ?: false
+        }
+
+    val serverPortFlow: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[SERVER_PORT_KEY] ?: DEFAULT_SERVER_PORT
+        }
+
     suspend fun saveSelectedFolder(uri: String) {
         context.dataStore.edit { preferences ->
             preferences[SELECTED_FOLDER_KEY] = uri
@@ -90,6 +103,18 @@ class UserPreferences(private val context: Context) {
     suspend fun saveNotificationsPrompted(prompted: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[NOTIFICATIONS_PROMPTED_KEY] = prompted
+        }
+    }
+
+    suspend fun saveServerRunning(running: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SERVER_RUNNING_KEY] = running
+        }
+    }
+
+    suspend fun saveServerPort(port: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[SERVER_PORT_KEY] = port
         }
     }
 

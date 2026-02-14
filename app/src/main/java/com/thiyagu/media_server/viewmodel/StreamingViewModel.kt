@@ -85,11 +85,14 @@ class StreamingViewModel(
     }
 
     fun startServer(folderUri: Uri) {
-        serverManager.startServer(folderUri)
+        viewModelScope.launch {
+            userPreferences.saveSelectedFolder(folderUri.toString())
+        }
+        serverManager.requestStartServer(folderUri)
     }
 
     fun stopServer() {
-        serverManager.stopServer()
+        serverManager.requestStopServer()
     }
     
     fun toggleSubfolderScanning(enabled: Boolean) {
@@ -101,10 +104,7 @@ class StreamingViewModel(
             if (wasRunning) {
                 savedFolderUri.value?.let { uriString ->
                     val uri = Uri.parse(uriString)
-                    serverManager.stopServer()
-                    // Small delay to ensure clean shutdown
-                    kotlinx.coroutines.delay(500)
-                    serverManager.startServer(uri)
+                    serverManager.requestRestartServer(uri)
                 }
             }
             
@@ -123,10 +123,7 @@ class StreamingViewModel(
             // Auto-restart server if running and folder changed
             val wasRunning = serverState.value is ServerState.Running
             if (wasRunning && restartServer) {
-                serverManager.stopServer()
-                // Small delay to ensure clean shutdown
-                kotlinx.coroutines.delay(500)
-                serverManager.startServer(folderUri)
+                serverManager.requestRestartServer(folderUri)
             }
             
             // 1. Sync Database

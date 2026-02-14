@@ -134,7 +134,7 @@ class StreamingActivity : AppCompatActivity() {
         // 4. Network Speed
         lifecycleScope.launch {
             viewModel.networkSpeed.collect { mbps ->
-                binding.tvStatSpeed.text = String.format("%.1f", mbps)
+                binding.tvStatSpeed.text = String.format(Locale.getDefault(), "%.1f Mbps", mbps)
             }
         }
         

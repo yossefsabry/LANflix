@@ -3,6 +3,7 @@ package com.thiyagu.media_server.cache
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import android.provider.DocumentsContract
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,7 @@ class MetadataCacheManager(
      */
     data class CacheData(
         @SerializedName("version")
-        val version: Int = 1,
+        val version: Int = 2,
         
         @SerializedName("timestamp")
         val timestamp: Long,
@@ -70,7 +71,10 @@ class MetadataCacheManager(
         val lastModified: Long,
         
         @SerializedName("path")
-        val path: String  // Relative path from root (e.g., "subfolder/video.mp4")
+        val path: String,  // Relative path from root (e.g., "subfolder/video.mp4")
+
+        @SerializedName("documentId")
+        val documentId: String?
     )
     
     /**
@@ -122,13 +126,19 @@ class MetadataCacheManager(
                 } else {
                     val ext = file.name?.substringAfterLast('.', "")?.lowercase()
                     if (ext in VIDEO_EXTENSIONS && file.length() > 0) {
+                        val documentId = try {
+                            DocumentsContract.getDocumentId(file.uri)
+                        } catch (_: Exception) {
+                            null
+                        }
                         accumulator.add(
                             VideoMetadata(
                                 name = file.name!!,
                                 size = file.length(),
                                 lastModified = file.lastModified(),
                                 path = if (relativePath.isEmpty()) file.name!! 
-                                      else "$relativePath/${file.name}"
+                                      else "$relativePath/${file.name}",
+                                documentId = documentId
                             )
                         )
                         // Emit progress every 10 items to reduce overhead
@@ -191,6 +201,7 @@ class MetadataCacheManager(
     }
 
     fun isCacheValid(cache: CacheData): Boolean {
+        if (cache.version < CACHE_VERSION) return false
         if (cache.folderUri != treeUri.toString()) return false
         val age = System.currentTimeMillis() - cache.timestamp
         val maxAge = 24 * 60 * 60 * 1000L // 24 hours
@@ -202,14 +213,8 @@ class MetadataCacheManager(
      */
     suspend fun refreshIfNeeded(): CacheData {
         val cached = loadCache()
-        if (cached != null) {
-            // Check consistency inline to avoid double read
-            if (cached.folderUri == treeUri.toString()) {
-                val age = System.currentTimeMillis() - cached.timestamp
-                if (age < 24 * 60 * 60 * 1000L) {
-                    return cached
-                }
-            }
+        if (cached != null && isCacheValid(cached)) {
+            return cached
         }
         return buildCache()
     }
@@ -269,10 +274,10 @@ class MetadataCacheManager(
     }
     
     private fun triggerRebuild() {
-        // Debounce rebuilds (wait 5 seconds after last change)
+        // Debounce rebuilds (short delay for quick updates)
         rebuildJob?.cancel()
         rebuildJob = scope.launch {
-            kotlinx.coroutines.delay(5000) // 5 seconds debounce
+            kotlinx.coroutines.delay(1500) // 1.5 seconds debounce
             try {
                 buildCache()
                 // Optionally notify clients via websocket if implemented
@@ -283,6 +288,7 @@ class MetadataCacheManager(
     }
     
     companion object {
+        private const val CACHE_VERSION = 2
         private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "avi", "mov", "webm")
     }
 }
