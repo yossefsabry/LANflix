@@ -26,6 +26,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
@@ -56,6 +57,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var retryCount = 0
     private var retryJob: Job? = null
     private var parserRecoveryAttempted = false
+    private var keepAliveJob: Job? = null
     
     // Video history for resume functionality
     private val videoHistoryRepository: com.thiyagu.media_server.data.VideoHistoryRepository by inject()
@@ -137,6 +139,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         historyController.persistPlaybackPosition()
+        stopKeepAlive()
         releasePlayer()
         uiController.stopDebugUpdates()
         historyController.stopProgressUpdates()
@@ -146,6 +149,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         super.onStop()
         networkController.notifyServerDisconnect(videoUrl, clientId, pin, DEFAULT_PORT)
         historyController.persistPlaybackPosition()
+        stopKeepAlive()
         releasePlayer()
         historyController.stopProgressUpdates()
     }
@@ -180,8 +184,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             val dataSourceFactory = DefaultHttpDataSource.Factory()
                 .setUserAgent("LANflix-App/2.0")
                 .setAllowCrossProtocolRedirects(true)
-                .setConnectTimeoutMs(15000)
-                .setReadTimeoutMs(15000)
+                .setConnectTimeoutMs(0)
+                .setReadTimeoutMs(0)
                 .setDefaultRequestProperties(headers)
 
             player = ExoPlayer.Builder(this)
@@ -194,7 +198,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 .build()
                 .apply {
                     addListener(object : Player.Listener {
-                         override fun onPlaybackStateChanged(playbackState: Int) {
+                        override fun onPlaybackStateChanged(playbackState: Int) {
                              uiController.updateDebugInfo()
                              when (playbackState) {
                                  Player.STATE_BUFFERING -> loadingIndicator.visibility = View.VISIBLE
@@ -213,6 +217,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                                  }
                                  Player.STATE_IDLE -> loadingIndicator.visibility = View.GONE
                              }
+                             updateKeepAlive()
                          }
 
                         override fun onPlayerError(error: PlaybackException) {
@@ -245,6 +250,10 @@ class VideoPlayerActivity : AppCompatActivity() {
                         
                          override fun onVideoSizeChanged(videoSize: VideoSize) {
                             uiController.updateDebugInfo()
+                         }
+
+                         override fun onIsPlayingChanged(isPlaying: Boolean) {
+                             updateKeepAlive()
                          }
                      })
                  }
@@ -281,9 +290,55 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun releasePlayer() {
         retryJob?.cancel()
         retryJob = null
+        stopKeepAlive()
         player?.release()
         player = null
         playerView.keepScreenOn = false
+    }
+
+    private fun updateKeepAlive() {
+        val p = player ?: return
+        val shouldRun = p.playWhenReady && (p.playbackState == Player.STATE_READY || p.playbackState == Player.STATE_BUFFERING)
+        if (shouldRun) {
+            startKeepAlive()
+        } else {
+            stopKeepAlive()
+        }
+    }
+
+    private fun startKeepAlive() {
+        if (keepAliveJob?.isActive == true) return
+        keepAliveJob = lifecycleScope.launch(Dispatchers.IO) {
+            while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+                sendKeepAlivePing()
+                delay(KEEPALIVE_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun stopKeepAlive() {
+        keepAliveJob?.cancel()
+        keepAliveJob = null
+    }
+
+    private fun sendKeepAlivePing() {
+        val url = videoUrl ?: return
+        val uri = Uri.parse(url)
+        val host = uri.host ?: return
+        val port = if (uri.port != -1) uri.port else DEFAULT_PORT
+        val pingUrl = URL("http://$host:$port/api/ping")
+        try {
+            val connection = (pingUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = KEEPALIVE_CONNECT_TIMEOUT_MS
+                readTimeout = KEEPALIVE_READ_TIMEOUT_MS
+                clientId?.let { setRequestProperty("X-Lanflix-Client", it) }
+                pin?.let { setRequestProperty("X-Lanflix-Pin", it) }
+            }
+            runCatching { connection.inputStream?.close() }
+            connection.disconnect()
+        } catch (_: Exception) {
+        }
     }
 
     private fun shouldRetry(error: PlaybackException): Boolean {
@@ -470,5 +525,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         private const val REDISCOVERY_POLL_MS = 500L
         private const val REDISCOVERY_CONNECT_TIMEOUT_MS = 2000
         private const val REDISCOVERY_READ_TIMEOUT_MS = 2000
+        private const val KEEPALIVE_INTERVAL_MS = 20_000L
+        private const val KEEPALIVE_CONNECT_TIMEOUT_MS = 1500
+        private const val KEEPALIVE_READ_TIMEOUT_MS = 1500
     }
 }

@@ -143,7 +143,7 @@ class KtorMediaStreamingServer(
                     connectionGroupSize = 2    // Dedicated threads for accepting connections
                     workerGroupSize = 16       // Threads for processing IO (Netty EventLoop)
                     callGroupSize = 32         // Threads for processing application logic (Pipeline)
-                    responseWriteTimeoutSeconds = 30 // Allow ample time for writes
+                    responseWriteTimeoutSeconds = Int.MAX_VALUE
                 }) {
                     install(AutoHeadResponse)
                     
