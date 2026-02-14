@@ -165,9 +165,9 @@ class VideoPlayerActivity : AppCompatActivity() {
             val loadControl = DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
                     3_000,  // Min buffer
-                    50_000, // Max buffer
-                    1_500,  // Buffer for playback start
-                    3_000   // Buffer for rebuffer
+                    15_000, // Max buffer (avoid long idle reads)
+                    1_000,  // Buffer for playback start
+                    2_000   // Buffer for rebuffer
                 )
                 .build()
                 
