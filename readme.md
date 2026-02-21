@@ -48,6 +48,86 @@
 3. **Client mode** discovers servers, checks readiness, and loads the server UI in-app.
 4. Playback uses **Media3 (ExoPlayer)** with local resume history stored on-device.
 
+## Architecture and Data Flow
+
+### System Overview
+
+```mermaid
+flowchart LR
+  subgraph DeviceA["Device A: Server Mode"]
+    UI_Server["StreamingActivity / StreamingViewModel"]
+    Prefs["UserPreferences (DataStore)"]
+    Service["MediaServerService (foreground)"]
+    ServerMgr["ServerManager"]
+    NSD["NSD Service (_lanflix._tcp)"]
+    Ktor["KtorMediaStreamingServer"]
+    Cache["MetadataCacheManager"]
+    Storage["SAF Media Folder"]
+    RoomMedia["Room: MediaDatabase"]
+  end
+
+  subgraph DeviceB["Device B: Client Mode"]
+    UI_Client["ClientActivity"]
+    Discovery["ServerDiscoveryManager (NSD)"]
+    Conn["ClientConnectionController"]
+    Web["WebView (Server UI)"]
+    Player["VideoPlayerActivity + ExoPlayer"]
+    History["Room: VideoHistory"]
+  end
+
+  UI_Server --> ServerMgr --> Service --> Ktor
+  UI_Server --> RoomMedia
+  Prefs <--> ServerMgr
+  Prefs <--> Service
+  ServerMgr --> NSD --> Discovery
+  Ktor <--> Cache --> Storage
+  Ktor -- "HTTP /api + stream" --> Web
+  Web -- "video URL" --> Player
+  Player -- "resume/save" --> History
+  UI_Client --> Discovery --> UI_Client
+  UI_Client --> Conn --> Ktor
+```
+
+### Data Flow (Server Start, Discovery, Playback)
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant StreamingActivity
+  participant StreamingViewModel
+  participant MediaRepository
+  participant RoomDB as MediaDatabase
+  participant MediaServerService
+  participant ServerManager
+  participant KtorServer
+  participant CacheManager
+  participant ClientActivity
+  participant ClientConnection
+  participant WebView
+  participant VideoPlayer
+  participant HistoryDB as VideoHistory
+
+  User->>StreamingActivity: Select folder + Start
+  StreamingActivity->>StreamingViewModel: startServer(folderUri)
+  StreamingViewModel->>MediaRepository: scanAndSync(folderUri)
+  MediaRepository->>RoomDB: insert/delete MediaFile rows
+  StreamingViewModel->>ServerManager: requestStartServer()
+  ServerManager->>MediaServerService: ACTION_START (foreground)
+  MediaServerService->>ServerManager: startServerInternal()
+  ServerManager->>KtorServer: start()
+  KtorServer->>CacheManager: refreshIfNeeded/buildCache()
+  CacheManager-->>KtorServer: cache data + scan status
+
+  User->>ClientActivity: Select server / enter PIN
+  ClientActivity->>ClientConnection: ping /api/ping (PIN, clientId)
+  ClientConnection-->>ClientActivity: ready/auth status
+  ClientActivity->>WebView: load server UI (/)
+  WebView->>KtorServer: GET /api/videos or /api/tree
+  WebView->>VideoPlayer: open video URL
+  VideoPlayer->>KtorServer: GET /{filename} (Range)
+  VideoPlayer->>HistoryDB: save/resume position
+```
+
 ## Getting Started
 
 ### Prerequisites
