@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="lanflix_bar_margin_top">
+        @dimen/exo_styled_bottom_bar_margin_top
+    </dimen>
+    <dimen name="lanflix_bar_time_pad">
+        @dimen/exo_styled_bottom_bar_time_padding
+    </dimen>
+    <dimen name="lanflix_progress_height">
+        @dimen/exo_styled_progress_layout_height
+    </dimen>
+    <dimen name="lanflix_prog_margin">
+        @dimen/exo_styled_progress_margin_bottom
+    </dimen>
+    <dimen name="lanflix_minimal_margin_bottom">
+        @dimen/exo_styled_minimal_controls_margin_bottom
+    </dimen>
+</resources>

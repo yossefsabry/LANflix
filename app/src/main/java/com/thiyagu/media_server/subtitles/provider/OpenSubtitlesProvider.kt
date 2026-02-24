@@ -1,5 +1,4 @@
 package com.thiyagu.media_server.subtitles.provider
-
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.thiyagu.media_server.subtitles.SubtitleFetchResult
@@ -93,6 +92,12 @@ class OpenSubtitlesProvider(
             destDir.mkdirs()
         }
         val safeName = sanitizeFileName(name)
+        val lowerName = safeName.lowercase()
+        if (!lowerName.endsWith(".srt") &&
+            !lowerName.endsWith(".srt.gz")
+        ) {
+            return null
+        }
         val baseName = stripGzipSuffix(safeName)
         val finalName = ensureSubtitleExt(baseName)
         val target = File(destDir, finalName)
@@ -189,7 +194,6 @@ class OpenSubtitlesProvider(
         private const val SEARCH_BASE_URL =
             "https://rest.opensubtitles.org/search"
         private const val TIMEOUT_MS = 10_000
-        private val SUBTITLE_EXTS =
-            setOf("srt", "vtt", "ass", "sub")
+        private val SUBTITLE_EXTS = setOf("srt")
     }
 }

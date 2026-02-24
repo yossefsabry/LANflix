@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission
+        android:name="android.permission.INTERNET" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission
+        android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission
+        android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission
+        android:name="android.permission.WAKE_LOCK" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="${permFgsDataSync}" />
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission
+        android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
     <application
         android:name=".LANflixApplication"
@@ -21,19 +30,29 @@
         android:theme="@style/AppTheme"
         android:networkSecurityConfig="@xml/network_security_config">
 
-        <activity android:name=".SplashActivity"
+        <meta-data
+            android:name="${castOptionsProviderMeta}"
+            android:value="${castOptionsProviderClass}" />
+
+        <activity
+            android:name=".SplashActivity"
             android:exported="true"
-            android:noHistory="true"
-            >
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category
+                    android:name="${intentCategoryLauncher}" />
             </intent-filter>
         </activity>
 
-        <activity android:name=".WelcomeActivity" android:exported="false" android:theme="@style/WelcomeTheme" />
-        <activity android:name=".HomeActivity" android:exported="false" />
+        <activity
+            android:name=".WelcomeActivity"
+            android:exported="false"
+            android:theme="@style/WelcomeTheme" />
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false" />
         <activity
             android:name=".ClientActivity"
             android:exported="true" />
@@ -43,23 +62,33 @@
         <activity
             android:name=".MediaManagementActivity"
             android:exported="false" />
-        <activity android:name=".StreamingActivity" android:exported="false" />
-        <activity android:name=".AppSettingsActivity" android:exported="false" />
-        <activity android:name=".PrivacySecurityActivity" android:exported="false" />
-        <activity android:name=".NetworkInfoActivity" android:exported="false" />
-        <activity android:name=".DiagnosticsActivity" android:exported="false" />
         <activity
-             android:name=".VideoPlayerActivity"
-             android:exported="false"
-             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
-             android:screenOrientation="landscape"
-             android:theme="@style/NoActionBarTheme"/>
+            android:name=".StreamingActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AppSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PrivacySecurityActivity"
+            android:exported="false" />
+        <activity
+            android:name=".NetworkInfoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".DiagnosticsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".VideoPlayerActivity"
+            android:exported="false"
+            android:configChanges="${videoPlayerConfigChanges}"
+            android:screenOrientation="landscape"
+            android:theme="@style/NoActionBarTheme" />
         
         <activity
             android:name=".CrashActivity"
             android:exported="false"
             android:noHistory="true"
-            android:theme="@style/NoActionBarTheme"/>
+            android:theme="@style/NoActionBarTheme" />
 
         <service
             android:name=".service.MediaServerService"
@@ -71,7 +100,8 @@
             android:name=".BootCompletedReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action
+                    android:name="${intentActionBootCompleted}" />
             </intent-filter>
         </receiver>
 

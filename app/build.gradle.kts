@@ -25,8 +25,26 @@ android {
         versionCode = 5
         versionName = "1.0.3"
 
+        manifestPlaceholders["castOptionsProviderMeta"] =
+            "com.google.android.gms.cast.framework." +
+                "OPTIONS_PROVIDER_CLASS_NAME"
+        manifestPlaceholders["castOptionsProviderClass"] =
+            "com.thiyagu.media_server.cast." +
+                "CastOptionsProvider"
+        manifestPlaceholders["permFgsDataSync"] =
+            "android.permission." +
+                "FOREGROUND_SERVICE_DATA_SYNC"
+        manifestPlaceholders["intentCategoryLauncher"] =
+            "android.intent.category.LAUNCHER"
+        manifestPlaceholders["intentActionBootCompleted"] =
+            "android.intent.action.BOOT_COMPLETED"
+        manifestPlaceholders["videoPlayerConfigChanges"] =
+            "orientation|screenSize|screenLayout|" +
+                "keyboardHidden|smallestScreenSize"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        testInstrumentationRunner =
+            "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -34,7 +52,9 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile(
+                    "proguard-android-optimize.txt"
+                ),
                 "proguard-rules.pro"
             )
         }
@@ -62,7 +82,14 @@ android {
 }
 
 dependencies {
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation(
+        fileTree(
+            mapOf(
+                "dir" to "libs",
+                "include" to listOf("*.jar")
+            )
+        )
+    )
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
@@ -78,7 +105,9 @@ dependencies {
     implementation("io.ktor:ktor-server-caching-headers:2.3.7")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation(
+        "androidx.test.espresso:espresso-core:3.5.1"
+    )
     
     // Lifecycle components
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
@@ -103,6 +132,11 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.2.0")
     implementation("androidx.media3:media3-ui:1.2.0")
     implementation("androidx.media3:media3-common:1.2.0")
+    implementation("androidx.media3:media3-cast:1.2.0")
+    implementation(
+        "com.google.android.gms:" +
+            "play-services-cast-framework:21.4.0"
+    )
     
     // JSON Parsing
     implementation("com.google.code.gson:gson:2.10.1")

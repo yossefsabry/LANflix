@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style
+        name="LanflixTimeSeparator"
+        parent="ExoStyledControls.TimeText.Separator" />
+    <style
+        name="LanflixBottomSettings"
+        parent="ExoStyledControls.Button.Bottom.Settings" />
+    <style
+        name="LanflixBottomFullscreen"
+        parent="ExoStyledControls.Button.Bottom.FullScreen" />
+    <style
+        name="LanflixBottomOverflowShow"
+        parent="ExoStyledControls.Button.Bottom.OverflowShow" />
+    <style
+        name="LanflixBottomOverflowHide"
+        parent="ExoStyledControls.Button.Bottom.OverflowHide" />
+    <style
+        name="LanflixCenterPlayPause"
+        parent="ExoStyledControls.Button.Center.PlayPause" />
+    <style
+        name="LanflixRepeatToggle"
+        parent="ExoStyledControls.Button.Bottom.RepeatToggle" />
+</resources>

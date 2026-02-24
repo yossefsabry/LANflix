@@ -1,5 +1,4 @@
 package com.thiyagu.media_server.subtitles
-
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -89,6 +88,9 @@ class SubtitleRepository(
     ): Boolean = withContext(Dispatchers.IO) {
         val name = queryDisplayName(context, uri)
             ?: DEFAULT_USER_NAME
+        val ext = name.substringAfterLast('.', "")
+            .lowercase()
+        if (ext != "srt") return@withContext false
         val destDir = subtitleDir(context, videoKey)
         if (!destDir.exists()) {
             destDir.mkdirs()
@@ -121,7 +123,6 @@ class SubtitleRepository(
         videoKey: String
     ): SubtitleCacheEntry? =
         cacheStore.get(videoKey)
-
     private fun availableEntry(
         file: File,
         provider: String,

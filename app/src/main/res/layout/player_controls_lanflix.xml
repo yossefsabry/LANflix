@@ -7,72 +7,14 @@
         android:layout_height="0dp"
         android:background="@drawable/player_scrim_full" />
 
-    <FrameLayout
-        android:id="@+id/lanflix_top_bar"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_gravity="top"
-        android:background="@drawable/player_scrim_top">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/lanflix_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@android:color/white"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/lanflix_speed"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/player_pill_bg"
-                android:gravity="center"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:textColor="@android:color/white"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/lanflix_subtitle_upload"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/player_pill_bg"
-                android:contentDescription="@string/lanflix_upload_subtitles"
-                android:gravity="center"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:text="@string/lanflix_subtitle_upload_label"
-                android:textColor="@android:color/white"
-                android:textSize="12sp" />
-
-            <ImageButton
-                android:id="@id/exo_repeat_toggle"
-                style="@style/ExoStyledControls.Button.Bottom.RepeatToggle"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="@drawable/player_icon_bg" />
-        </LinearLayout>
-    </FrameLayout>
+    <include layout="@layout/player_controls_top_bar" />
 
     <FrameLayout
         android:id="@id/exo_bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="@dimen/exo_styled_bottom_bar_height"
         android:layout_gravity="bottom"
-        android:layout_marginTop="@dimen/exo_styled_bottom_bar_margin_top"
+        android:layout_marginTop="@dimen/lanflix_bar_margin_top"
         android:background="@drawable/player_scrim_bottom"
         android:layoutDirection="ltr">
 
@@ -82,16 +24,16 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical|start"
             android:layoutDirection="ltr"
-            android:paddingStart="@dimen/exo_styled_bottom_bar_time_padding"
-            android:paddingEnd="@dimen/exo_styled_bottom_bar_time_padding"
-            android:paddingLeft="@dimen/exo_styled_bottom_bar_time_padding"
-            android:paddingRight="@dimen/exo_styled_bottom_bar_time_padding">
+            android:paddingStart="@dimen/lanflix_bar_time_pad"
+            android:paddingEnd="@dimen/lanflix_bar_time_pad"
+            android:paddingLeft="@dimen/lanflix_bar_time_pad"
+            android:paddingRight="@dimen/lanflix_bar_time_pad">
 
             <TextView
                 android:id="@id/exo_position"
                 style="@style/ExoStyledControls.TimeText.Position" />
 
-            <TextView style="@style/ExoStyledControls.TimeText.Separator" />
+            <TextView style="@style/LanflixTimeSeparator" />
 
             <TextView
                 android:id="@id/exo_duration"
@@ -112,15 +54,15 @@
 
             <ImageButton
                 android:id="@+id/exo_settings"
-                style="@style/ExoStyledControls.Button.Bottom.Settings" />
+                style="@style/LanflixBottomSettings" />
 
             <ImageButton
                 android:id="@id/exo_fullscreen"
-                style="@style/ExoStyledControls.Button.Bottom.FullScreen" />
+                style="@style/LanflixBottomFullscreen" />
 
             <ImageButton
                 android:id="@id/exo_overflow_show"
-                style="@style/ExoStyledControls.Button.Bottom.OverflowShow" />
+                style="@style/LanflixBottomOverflowShow" />
 
         </LinearLayout>
 
@@ -139,7 +81,7 @@
 
                 <ImageButton
                     android:id="@id/exo_overflow_hide"
-                    style="@style/ExoStyledControls.Button.Bottom.OverflowHide" />
+                    style="@style/LanflixBottomOverflowHide" />
 
             </LinearLayout>
 
@@ -150,23 +92,24 @@
     <View
         android:id="@id/exo_progress_placeholder"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/exo_styled_progress_layout_height"
+        android:layout_height="@dimen/lanflix_progress_height"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="@dimen/exo_styled_progress_margin_bottom" />
+        android:layout_marginBottom="@dimen/lanflix_prog_margin" />
 
     <LinearLayout
         android:id="@id/exo_minimal_controls"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginBottom="@dimen/exo_styled_minimal_controls_margin_bottom"
+        android:layout_marginBottom=
+            "@dimen/lanflix_minimal_margin_bottom"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:layoutDirection="ltr">
 
         <ImageButton
             android:id="@id/exo_minimal_fullscreen"
-            style="@style/ExoStyledControls.Button.Bottom.FullScreen" />
+            style="@style/LanflixBottomFullscreen" />
 
     </LinearLayout>
 
@@ -189,7 +132,7 @@
 
         <ImageButton
             android:id="@id/exo_play_pause"
-            style="@style/ExoStyledControls.Button.Center.PlayPause" />
+            style="@style/LanflixCenterPlayPause" />
 
         <include layout="@layout/exo_player_control_ffwd_button" />
 

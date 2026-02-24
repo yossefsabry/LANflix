@@ -95,4 +95,4 @@ private fun hashVideoKey(videoKey: String): String {
 private const val BASE_DIR = "subtitles"
 
 private val SUBTITLE_EXTS =
-    setOf("srt", "vtt", "ass", "sub")
+    setOf("srt")

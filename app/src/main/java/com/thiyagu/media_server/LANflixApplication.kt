@@ -8,6 +8,7 @@ import org.koin.core.context.startKoin
 
 import androidx.appcompat.app.AppCompatDelegate
 import com.thiyagu.media_server.data.UserPreferences
+import com.google.android.gms.cast.framework.CastContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -30,6 +31,8 @@ class LANflixApplication : Application(), KoinComponent {
             androidContext(this@LANflixApplication)
             modules(appModule)
         }
+
+        initializeCast()
         
         // Apply Theme
         CoroutineScope(Dispatchers.Main).launch {
@@ -45,35 +48,60 @@ class LANflixApplication : Application(), KoinComponent {
     }
     
     private fun setupCrashHandler() {
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        val defaultHandler =
+            Thread.getDefaultUncaughtExceptionHandler()
         
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        Thread.setDefaultUncaughtExceptionHandler {
+            thread,
+            throwable ->
             try {
                 // Prepare error details
-                val stackTrace = android.util.Log.getStackTraceString(throwable)
-                val errorDetails = "Thread: ${thread.name}\n\n$stackTrace"
+                val stackTrace =
+                    android.util.Log.getStackTraceString(throwable)
+                val errorDetails =
+                    "Thread: ${thread.name}\n\n$stackTrace"
                 
                 // Limit to 2000 chars to avoid Intent size limits
                 val limitedDetails = if (errorDetails.length > 2000) {
-                    errorDetails.substring(0, 2000) + "\n...(truncated)"
+                    errorDetails.substring(0, 2000) +
+                        "\n...(truncated)"
                 } else {
                     errorDetails
                 }
                 
                 // Launch crash activity
-                val intent = android.content.Intent(this, CrashActivity::class.java).apply {
-                    putExtra(CrashActivity.EXTRA_ERROR_DETAILS, limitedDetails)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                val intent = android.content.Intent(
+                    this,
+                    CrashActivity::class.java
+                ).apply {
+                    putExtra(
+                        CrashActivity.EXTRA_ERROR_DETAILS,
+                        limitedDetails
+                    )
+                    addFlags(
+                        android.content.Intent
+                            .FLAG_ACTIVITY_NEW_TASK or
+                            android.content.Intent
+                                .FLAG_ACTIVITY_CLEAR_TASK
+                    )
                 }
                 startActivity(intent)
                 
                 // Kill the process
-                android.os.Process.killProcess(android.os.Process.myPid())
+                android.os.Process
+                    .killProcess(android.os.Process.myPid())
                 kotlin.system.exitProcess(10)
             } catch (e: Exception) {
                 // If our crash handler fails, fall back to default
                 defaultHandler?.uncaughtException(thread, throwable)
             }
+        }
+    }
+
+    private fun initializeCast() {
+        try {
+            CastContext.getSharedInstance(this)
+        } catch (_: Exception) {
         }
     }
 }

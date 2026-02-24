@@ -149,12 +149,7 @@ internal class SubtitleMenuController(
     }
 
     private fun mimeTypeFor(file: File): String {
-        return when (file.extension.lowercase()) {
-            "vtt" -> MimeTypes.TEXT_VTT
-            "ass", "ssa" -> MimeTypes.TEXT_SSA
-            "srt", "sub" -> MimeTypes.APPLICATION_SUBRIP
-            else -> MimeTypes.APPLICATION_SUBRIP
-        }
+        return MimeTypes.APPLICATION_SUBRIP
     }
 
     private data class SubtitleOption(

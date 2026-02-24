@@ -10,19 +10,32 @@ import io.ktor.server.response.respondText
 internal fun formatFileSize(bytes: Long): String {
     return when {
         bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
-        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
-        else -> String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0))
+        bytes < 1024 * 1024 ->
+            String.format("%.1f KB", bytes / 1024.0)
+        bytes < 1024 * 1024 * 1024 ->
+            String.format(
+                "%.1f MB",
+                bytes / (1024.0 * 1024.0)
+            )
+        else ->
+            String.format(
+                "%.1f GB",
+                bytes / (1024.0 * 1024.0 * 1024.0)
+            )
     }
 }
 
-internal fun parseRangeHeader(rangeHeader: String?, totalLength: Long): LongRange? {
+internal fun parseRangeHeader(
+    rangeHeader: String?,
+    totalLength: Long
+): LongRange? {
     if (rangeHeader.isNullOrBlank()) return null
     if (!rangeHeader.startsWith("bytes=")) return null
     if (totalLength <= 0) return null
 
     val rangeSpec = rangeHeader.removePrefix("bytes=").trim()
-    val firstRange = rangeSpec.split(',').firstOrNull()?.trim() ?: return null
+    val firstRange =
+        rangeSpec.split(',').firstOrNull()?.trim() ?: return null
     val parts = firstRange.split('-', limit = 2)
     if (parts.size != 2) return null
 
@@ -52,18 +65,69 @@ internal fun parseRangeHeader(rangeHeader: String?, totalLength: Long): LongRang
 internal fun contentTypeForFile(filename: String): ContentType {
     return when {
         filename.endsWith(".mp4", true) -> ContentType.Video.MP4
-        filename.endsWith(".mkv", true) -> ContentType.parse("video/x-matroska")
-        filename.endsWith(".webm", true) -> ContentType.parse("video/webm")
-        filename.endsWith(".avi", true) -> ContentType.parse("video/x-msvideo")
-        filename.endsWith(".mov", true) -> ContentType.parse("video/quicktime")
+        filename.endsWith(".mkv", true) ->
+            ContentType.parse("video/x-matroska")
+        filename.endsWith(".webm", true) ->
+            ContentType.parse("video/webm")
+        filename.endsWith(".avi", true) ->
+            ContentType.parse("video/x-msvideo")
+        filename.endsWith(".mov", true) ->
+            ContentType.parse("video/quicktime")
         else -> ContentType.Video.Any
     }
 }
 
-internal suspend fun ApplicationCall.requireAuth(server: KtorMediaStreamingServer): Boolean {
+internal suspend fun ApplicationCall.requireAuth(
+    server: KtorMediaStreamingServer
+): Boolean {
     if (server.authManager.isAuthorized(this)) return true
-    respondText("""{"error":"unauthorized"}""", ContentType.Application.Json, HttpStatusCode.Unauthorized)
+    respondText(
+        """{"error":"unauthorized"}""",
+        ContentType.Application.Json,
+        HttpStatusCode.Unauthorized
+    )
     return false
+}
+
+internal suspend fun ApplicationCall.requireStreamAuth(
+    server: KtorMediaStreamingServer,
+    filename: String,
+    path: String?
+): Boolean {
+    if (server.authManager.isAuthorized(this)) return true
+    if (server.authManager.isCastTokenAuthorized(
+            call = this,
+            filename = filename,
+            path = path
+        )
+    ) {
+        return true
+    }
+    respondText(
+        """{"error":"unauthorized"}""",
+        ContentType.Application.Json,
+        HttpStatusCode.Unauthorized
+    )
+    return false
+}
+
+internal fun ApplicationCall.applyStreamCors() {
+    response.headers.append(
+        HttpHeaders.AccessControlAllowOrigin,
+        "*"
+    )
+    response.headers.append(
+        HttpHeaders.AccessControlAllowHeaders,
+        "Range, Content-Type"
+    )
+    response.headers.append(
+        HttpHeaders.AccessControlExposeHeaders,
+        "Content-Range, Accept-Ranges"
+    )
+    response.headers.append(
+        HttpHeaders.AccessControlAllowMethods,
+        "GET, OPTIONS"
+    )
 }
 
 internal fun ApplicationCall.noStore() {
