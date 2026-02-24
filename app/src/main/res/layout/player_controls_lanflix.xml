@@ -111,7 +111,7 @@
                 style="@style/ExoStyledControls.Button.Bottom.CC" />
 
             <ImageButton
-                android:id="@id/exo_settings"
+                android:id="@+id/exo_settings"
                 style="@style/ExoStyledControls.Button.Bottom.Settings" />
 
             <ImageButton
