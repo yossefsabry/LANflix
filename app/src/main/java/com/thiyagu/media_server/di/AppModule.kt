@@ -7,6 +7,10 @@ import com.thiyagu.media_server.data.repository.MediaRepository
 import com.thiyagu.media_server.data.repository.UserRepository
 import com.thiyagu.media_server.server.ServerDiscoveryManager
 import com.thiyagu.media_server.server.ServerManager
+import com.thiyagu.media_server.subtitles.SubtitleCacheStore
+import com.thiyagu.media_server.subtitles.SubtitleRepository
+import com.thiyagu.media_server.subtitles.provider.OpenSubtitlesProvider
+import com.thiyagu.media_server.subtitles.provider.SubtitleProvider
 import com.thiyagu.media_server.viewmodel.HomeViewModel
 import com.thiyagu.media_server.viewmodel.ProfileViewModel
 import com.thiyagu.media_server.viewmodel.StreamingViewModel
@@ -42,6 +46,15 @@ val appModule = module {
     single { MediaRepository(androidContext(), get()) }
     single { UserRepository(get()) }
     single { com.thiyagu.media_server.data.VideoHistoryRepository(get()) }
+    single { SubtitleCacheStore(androidContext()) }
+    single<SubtitleProvider> { OpenSubtitlesProvider() }
+    single {
+        SubtitleRepository(
+            androidContext(),
+            get(),
+            get()
+        )
+    }
 
     // ViewModels
     viewModel { HomeViewModel(get()) }

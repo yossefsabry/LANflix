@@ -55,6 +55,16 @@ object DiagnosticsPageTemplate {
             -webkit-tap-highlight-color: transparent;
             -webkit-font-smoothing: antialiased;
         }
+        #video-selected {
+            overflow-wrap: anywhere;
+        }
+        #video-select {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
     <script>
         const LanflixAuth = {

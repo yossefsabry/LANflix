@@ -20,4 +20,14 @@
     <!-- Navigation Errors -->
     <string name="error_open_profile">Could not open profile</string>
     <string name="error_open_settings">Could not open settings</string>
+    <string name="lanflix_upload_subtitles">Upload subtitles</string>
+    <string name="subtitle_upload_done">Subtitles saved</string>
+    <string name="subtitle_upload_failed">Subtitle save failed</string>
+    <string name="lanflix_subtitle_upload_label">Sub +</string>
+    <string name="lanflix_settings_title">Settings</string>
+    <string name="lanflix_settings_speed">Speed</string>
+    <string name="lanflix_settings_audio">Audio</string>
+    <string name="lanflix_settings_subtitles">Subtitles</string>
+    <string name="lanflix_subtitles_title">Subtitles</string>
+    <string name="lanflix_subtitles_off">Off</string>
 </resources>

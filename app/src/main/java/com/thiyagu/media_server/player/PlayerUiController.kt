@@ -9,11 +9,14 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.TrackSelectionDialogBuilder
 import androidx.media3.ui.PlayerView
 import androidx.media3.exoplayer.ExoPlayer
+import com.thiyagu.media_server.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -79,6 +82,34 @@ internal class PlayerUiController(
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    fun showSettingsMenu(onSubtitles: () -> Unit) {
+        val labels = arrayOf(
+            activity.getString(R.string.lanflix_settings_speed),
+            activity.getString(R.string.lanflix_settings_audio),
+            activity.getString(R.string.lanflix_settings_subtitles)
+        )
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.lanflix_settings_title)
+            .setItems(labels) { _, which ->
+                when (which) {
+                    0 -> showSpeedDialog()
+                    1 -> showAudioDialog()
+                    2 -> onSubtitles()
+                }
+            }
+            .show()
+    }
+
+    private fun showAudioDialog() {
+        val player = playerProvider() ?: return
+        TrackSelectionDialogBuilder(
+            activity,
+            activity.getString(R.string.lanflix_settings_audio),
+            player,
+            C.TRACK_TYPE_AUDIO
+        ).build().show()
     }
 
     fun updateSpeedLabel(speed: Float) {

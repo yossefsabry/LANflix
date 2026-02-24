@@ -1,11 +1,16 @@
 package com.thiyagu.media_server
 
+import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
+import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -33,10 +38,13 @@ import org.koin.android.ext.android.inject
 import com.thiyagu.media_server.player.PlayerHistoryController
 import com.thiyagu.media_server.player.PlayerNetworkController
 import com.thiyagu.media_server.player.PlayerUiController
+import com.thiyagu.media_server.subtitles.SubtitleMenuController
+import com.thiyagu.media_server.subtitles.SubtitleRepository
 import kotlinx.coroutines.Dispatchers
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Locale
 
 class VideoPlayerActivity : AppCompatActivity() {
 
@@ -53,6 +61,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var historyController: PlayerHistoryController
     private lateinit var networkController: PlayerNetworkController
     private lateinit var uiController: PlayerUiController
+    private lateinit var subtitleMenuController: SubtitleMenuController
     private var pendingSeekPosition: Long? = null
     private var retryCount = 0
     private var retryJob: Job? = null
@@ -62,6 +71,19 @@ class VideoPlayerActivity : AppCompatActivity() {
     // Video history for resume functionality
     private val videoHistoryRepository: com.thiyagu.media_server.data.VideoHistoryRepository by inject()
     private val discoveryManager: com.thiyagu.media_server.server.ServerDiscoveryManager by inject()
+    private val subtitleRepository: SubtitleRepository by inject()
+
+    private val subtitlePickerLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val uri = result.data?.data
+                ?: return@registerForActivityResult
+            handleSubtitlePicked(uri)
+        }
 
     @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,6 +97,14 @@ class VideoPlayerActivity : AppCompatActivity() {
         titleLabel = findViewById(R.id.lanflix_title)
         playerView.setControllerShowTimeoutMs(3000)
         playerView.setControllerHideOnTouch(true)
+
+        val uploadButton =
+            playerView.findViewById<View>(
+                R.id.lanflix_subtitle_upload
+            )
+        uploadButton?.setOnClickListener {
+            openSubtitlePicker()
+        }
 
         videoUrl = intent.getStringExtra("VIDEO_URL")
         clientId = intent.getStringExtra("CLIENT_ID")
@@ -106,6 +136,24 @@ class VideoPlayerActivity : AppCompatActivity() {
             playerProvider = { player },
             videoUrlProvider = { videoUrl }
         )
+
+        subtitleMenuController = SubtitleMenuController(
+            activity = this,
+            scope = lifecycleScope,
+            playerProvider = { player },
+            videoUrlProvider = { videoUrl },
+            videoKeyProvider = { historyKey }
+        )
+
+        val settingsButton =
+            playerView.findViewById<ImageButton>(
+                R.id.exo_settings
+            )
+        settingsButton?.setOnClickListener {
+            uiController.showSettingsMenu {
+                subtitleMenuController.showMenu()
+            }
+        }
 
         uiController.hideSystemUi()
 
@@ -266,6 +314,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         parserRecoveryAttempted = false
         player?.setMediaItem(mediaItem)
         player?.prepare()
+        checkSubtitlesInBackground()
 
         // Restore saved playback position
         lifecycleScope.launch {
@@ -285,6 +334,60 @@ class VideoPlayerActivity : AppCompatActivity() {
         
         player?.playWhenReady = true
         historyController.startProgressUpdates()
+    }
+
+    private fun checkSubtitlesInBackground() {
+        val key = historyKey ?: return
+        val url = videoUrl ?: return
+        val title = deriveTitle(url)
+        val lang = Locale.getDefault().language
+            .ifBlank { "en" }
+        lifecycleScope.launch(Dispatchers.IO) {
+            subtitleRepository.checkAndCache(
+                key,
+                title,
+                lang
+            )
+        }
+    }
+
+    private fun openSubtitlePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        intent.type = "*/*"
+        intent.putExtra(
+            Intent.EXTRA_MIME_TYPES,
+            arrayOf(
+                "text/*",
+                "application/octet-stream"
+            )
+        )
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+        subtitlePickerLauncher.launch(intent)
+    }
+
+    private fun handleSubtitlePicked(uri: Uri) {
+        val key = historyKey ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            val saved = subtitleRepository.saveUserSubtitle(
+                key,
+                uri
+            )
+            val messageId = if (saved) {
+                R.string.subtitle_upload_done
+            } else {
+                R.string.subtitle_upload_failed
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@VideoPlayerActivity,
+                    getString(messageId),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     private fun releasePlayer() {
