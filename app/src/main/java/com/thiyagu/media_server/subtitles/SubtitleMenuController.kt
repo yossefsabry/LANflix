@@ -1,18 +1,17 @@
 package com.thiyagu.media_server.subtitles
 
-import android.net.Uri
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
+import androidx.media3.common.TrackGroup
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.ExoPlayer
 import com.thiyagu.media_server.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.util.Locale
 
 internal class SubtitleMenuController(
     private val activity: AppCompatActivity,
@@ -21,14 +20,14 @@ internal class SubtitleMenuController(
     private val videoUrlProvider: () -> String?,
     private val videoKeyProvider: () -> String?
 ) {
-    private var selectedPath: String? = null
+    private var selectedTrackId: String? = null
 
     fun showMenu() {
         val key = videoKeyProvider() ?: return
         scope.launch(Dispatchers.IO) {
             val files = listLocalSubtitles(activity, key)
             val options = files.map { file ->
-                buildOption(file)
+                buildSubtitleDescriptor(file)
             }
             withContext(Dispatchers.Main) {
                 showOptions(options)
@@ -36,7 +35,9 @@ internal class SubtitleMenuController(
         }
     }
 
-    private fun showOptions(options: List<SubtitleOption>) {
+    private fun showOptions(
+        options: List<SubtitleDescriptor>
+    ) {
         val labels = ArrayList<String>()
         labels.add(
             activity.getString(
@@ -67,94 +68,95 @@ internal class SubtitleMenuController(
     }
 
     private fun selectedIndex(
-        options: List<SubtitleOption>
+        options: List<SubtitleDescriptor>
     ): Int {
-        val path = selectedPath ?: return 0
+        val trackId = selectedTrackId ?: return 0
         val index = options.indexOfFirst { option ->
-            option.file.absolutePath == path
+            option.trackId == trackId
         }
         return if (index == -1) 0 else index + 1
     }
 
-    private fun applySubtitle(option: SubtitleOption?) {
-        val path = option?.file?.absolutePath
-        if (path == selectedPath) return
+    private fun applySubtitle(option: SubtitleDescriptor?) {
         val player = playerProvider() ?: return
+        if (option == null) {
+            selectedTrackId = null
+            disableTextTracks(player)
+            return
+        }
+        val target = findTrack(player, option.trackId)
+        if (target != null) {
+            selectTextTrack(player, target)
+            selectedTrackId = option.trackId
+            return
+        }
         val url = videoUrlProvider() ?: return
-        val position = player.currentPosition
-        val playWhenReady = player.playWhenReady
-        val builder = MediaItem.Builder().setUri(url)
-        if (option != null) {
-            val config = MediaItem.SubtitleConfiguration
-                .Builder(Uri.fromFile(option.file))
-                .setMimeType(mimeTypeFor(option.file))
-                .setLanguage(option.language)
-                .setLabel(option.label)
-                .build()
-            builder.setSubtitleConfigurations(listOf(config))
-            selectedPath = option.file.absolutePath
-        } else {
-            selectedPath = null
-        }
-        player.setMediaItem(builder.build(), position)
-        player.prepare()
-        player.playWhenReady = playWhenReady
+        reprepareWithSubtitle(player, url, option)
+        selectedTrackId = option.trackId
     }
 
-    private fun buildOption(file: File): SubtitleOption {
-        val base = file.nameWithoutExtension
-        val tokens = splitTokens(base)
-        val code = detectLanguage(tokens)
-        val label = if (code == null) {
-            if (base.isNotBlank()) base else file.name
-        } else {
-            languageLabel(code)
-        }
-        return SubtitleOption(file, code, label)
+    private fun disableTextTracks(player: ExoPlayer) {
+        val builder = player.trackSelectionParameters.buildUpon()
+        builder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
+        builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+        player.trackSelectionParameters = builder.build()
     }
 
-    private fun splitTokens(value: String): List<String> {
-        return value.lowercase(Locale.getDefault())
-            .split(
-                '.', '_', '-', ' ', '[', ']',
-                '(', ')'
-            )
-            .filter { token -> token.isNotBlank() }
+    private fun selectTextTrack(
+        player: ExoPlayer,
+        target: TrackTarget
+    ) {
+        val builder = player.trackSelectionParameters.buildUpon()
+        builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+        builder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
+        val override = TrackSelectionOverride(
+            target.group,
+            target.index
+        )
+        builder.setOverrideForType(override)
+        player.trackSelectionParameters = builder.build()
     }
 
-    private fun detectLanguage(tokens: List<String>): String? {
-        if (tokens.any { token ->
-                token == "ar" ||
-                    token == "ara" ||
-                    token == "arabic"
+    private fun findTrack(
+        player: ExoPlayer,
+        trackId: String
+    ): TrackTarget? {
+        val tracks = player.currentTracks
+        for (group in tracks.groups) {
+            if (group.type != C.TRACK_TYPE_TEXT) continue
+            val mediaGroup = group.mediaTrackGroup
+            for (index in 0 until group.length) {
+                val format = group.getTrackFormat(index)
+                if (format.id == trackId) {
+                    return TrackTarget(mediaGroup, index)
+                }
             }
-        ) {
-            return "ar"
-        }
-        if (tokens.any { token ->
-                token == "en" ||
-                    token == "eng" ||
-                    token == "english"
-            }
-        ) {
-            return "en"
         }
         return null
     }
 
-    private fun languageLabel(code: String): String {
-        val locale = Locale(code)
-        val label = locale.getDisplayLanguage(Locale.getDefault())
-        return if (label.isBlank()) code else label
+    private fun reprepareWithSubtitle(
+        player: ExoPlayer,
+        url: String,
+        option: SubtitleDescriptor
+    ) {
+        val position = player.currentPosition
+        val playWhenReady = player.playWhenReady
+        val config = buildSubtitleConfiguration(option)
+        val item = MediaItem.Builder()
+            .setUri(url)
+            .setSubtitleConfigurations(listOf(config))
+            .build()
+        player.setMediaItem(item, position)
+        player.prepare()
+        player.playWhenReady = playWhenReady
+        val builder = player.trackSelectionParameters.buildUpon()
+        builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+        player.trackSelectionParameters = builder.build()
     }
 
-    private fun mimeTypeFor(file: File): String {
-        return MimeTypes.APPLICATION_SUBRIP
-    }
-
-    private data class SubtitleOption(
-        val file: File,
-        val language: String?,
-        val label: String
+    private data class TrackTarget(
+        val group: TrackGroup,
+        val index: Int
     )
 }

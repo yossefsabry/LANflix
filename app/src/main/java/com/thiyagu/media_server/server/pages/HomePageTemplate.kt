@@ -272,6 +272,19 @@ object HomePageTemplate {
             }
             return res;
         }
+
+        function formatSize(size) {
+            if (size == null) return '0 B';
+            if (typeof size === 'string') return size;
+            if (size <= 0) return '0 B';
+            const kb = size / 1024;
+            const mb = kb / 1024;
+            const gb = mb / 1024;
+            if (gb >= 1) return `${'$'}{gb.toFixed(1)} GB`;
+            if (mb >= 1) return `${'$'}{mb.toFixed(1)} MB`;
+            if (kb >= 1) return `${'$'}{kb.toFixed(1)} KB`;
+            return `${'$'}{Math.round(size)} B`;
+        }
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -939,7 +952,9 @@ object HomePageTemplate {
                                           </div>
                                           <div class="px-1 pb-1">
                                               <h3 class="font-bold text-sm text-text-main line-clamp-2 leading-snug mb-1">${'$'}{name}</h3>
-                                              <p class="text-[11px] text-text-sub">${'$'}{Math.round(item.size)} MB</p>
+                                              <p class="text-[11px] text-text-sub">
+                                                  ${'$'}{formatSize(item.size)}
+                                              </p>
                                           </div>
                                      </a>`;
                                 }
@@ -1122,7 +1137,7 @@ object HomePageTemplate {
                             recents.forEach(video => {
                                 const name = video.name;
                                 const path = video.path || name;
-                                const size = Math.round(video.size || 0);
+                                const size = formatSize(video.size);
                                 const thumbUrl = withAuthParam(`/api/thumbnail/${'$'}{encodeURIComponent(name)}?path=${'$'}{encodeURIComponent(path)}`);
                                 const el = document.createElement('a');
                                 // Fix: Include path in video link
@@ -1139,7 +1154,7 @@ object HomePageTemplate {
                                         <h3 class="font-bold text-sm text-white line-clamp-1 mb-1">${'$'}{name}</h3>
                                         <div class="flex items-center gap-2 text-[10px] text-gray-300 font-medium">
                                             <span class="bg-primary/20 text-primary px-1.5 py-0.5 rounded">NEW</span>
-                                            <span>${'$'}{size} MB</span>
+                                            <span>${'$'}{size}</span>
                                         </div>
                                     </div>
                                 `;

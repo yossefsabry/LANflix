@@ -1,16 +1,15 @@
 package com.thiyagu.media_server.player
 
-import android.net.Uri
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LifecycleCoroutineScope
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.thiyagu.media_server.data.VideoHistoryRepository
 import com.thiyagu.media_server.server.ServerDiscoveryManager
+import com.thiyagu.media_server.subtitles.buildMediaItemWithSubtitles
 import kotlinx.coroutines.launch
 
 internal class VideoPlayerSession(
@@ -151,7 +150,12 @@ internal class VideoPlayerSession(
         retryController.resetForNewMedia()
 
         val url = videoUrl ?: return
-        player?.setMediaItem(MediaItem.fromUri(Uri.parse(url)))
+        val mediaItem = buildMediaItemWithSubtitles(
+            context = activity,
+            videoKey = historyKey,
+            url = url
+        )
+        player?.setMediaItem(mediaItem)
         player?.prepare()
         subtitleHandler.checkSubtitlesInBackground()
         restoreSavedPosition()

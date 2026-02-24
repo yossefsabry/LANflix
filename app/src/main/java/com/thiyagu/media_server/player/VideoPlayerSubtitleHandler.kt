@@ -4,8 +4,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.media3.exoplayer.ExoPlayer
 import com.thiyagu.media_server.R
 import com.thiyagu.media_server.subtitles.SubtitleRepository
+import com.thiyagu.media_server.subtitles.refreshPlayerSubtitles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -15,6 +17,7 @@ internal class VideoPlayerSubtitleHandler(
     private val activity: AppCompatActivity,
     private val scope: LifecycleCoroutineScope,
     private val subtitleRepository: SubtitleRepository,
+    private val playerProvider: () -> ExoPlayer?,
     private val historyKeyProvider: () -> String?,
     private val urlProvider: () -> String?
 ) {
@@ -28,6 +31,9 @@ internal class VideoPlayerSubtitleHandler(
                 R.string.subtitle_upload_failed
             }
             withContext(Dispatchers.Main) {
+                if (saved) {
+                    updatePlayerSubtitles()
+                }
                 Toast.makeText(
                     activity,
                     activity.getString(messageId),
@@ -35,6 +41,18 @@ internal class VideoPlayerSubtitleHandler(
                 ).show()
             }
         }
+    }
+
+    private fun updatePlayerSubtitles() {
+        val player = playerProvider() ?: return
+        val key = historyKeyProvider() ?: return
+        val url = urlProvider() ?: return
+        refreshPlayerSubtitles(
+            player = player,
+            context = activity,
+            url = url,
+            videoKey = key
+        )
     }
 
     fun checkSubtitlesInBackground() {

@@ -50,6 +50,7 @@ internal class VideoPlayerCoordinator(
         activity = activity,
         scope = scope,
         subtitleRepository = subtitleRepository,
+        playerProvider = { session.player() },
         historyKeyProvider = { historyKey },
         urlProvider = { session.currentUrl() }
     )

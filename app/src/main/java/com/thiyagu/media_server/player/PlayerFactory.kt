@@ -6,6 +6,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -49,12 +50,16 @@ internal object PlayerFactory {
         val headers = mutableMapOf<String, String>()
         clientId?.let { headers["X-Lanflix-Client"] = it }
         pin?.let { headers["X-Lanflix-Pin"] = it }
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
+        val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(0)
             .setReadTimeoutMs(0)
             .setDefaultRequestProperties(headers)
+        val dataSourceFactory = DefaultDataSource.Factory(
+            context,
+            httpFactory
+        )
 
         return ExoPlayer.Builder(context)
             .setRenderersFactory(renderersFactory)
