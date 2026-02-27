@@ -1,32 +1,35 @@
 package com.thiyagu.media_server
 
+import android.content.res.Configuration
 import android.os.Bundle
+import android.text.InputFilter
+import android.text.InputType
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.thiyagu.media_server.data.UserPreferences
 import com.thiyagu.media_server.utils.PinAuth
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
-
-import androidx.core.app.NotificationManagerCompat
-import kotlinx.coroutines.flow.combine
-import android.text.InputFilter
-import android.text.InputType
 
 class AppSettingsActivity : AppCompatActivity() {
 
     private val userPreferences: UserPreferences by inject()
     private var isServerAuthEnabled: Boolean = false
     private var hasServerPin: Boolean = false
+    private var currentTheme: String = "system"
+    private var themeSwitch: SwitchMaterial? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_app_settings)
+        ThemeTransitionController.attachIfPending(this)
 
         val btnBack = findViewById<View>(R.id.btn_back)
         btnBack?.setOnClickListener { finish() }
@@ -42,6 +45,7 @@ class AppSettingsActivity : AppCompatActivity() {
         setupOption(R.id.opt_theme, R.drawable.ic_settings, "Theme", "System Default") {
             showThemeSelectionDialog()
         }
+        themeSwitch = findViewById<View>(R.id.opt_theme)?.findViewById(R.id.toggle)
 
         // History Retention Option
         setupOption(R.id.opt_history_retention, R.drawable.ic_settings, "Resume History", "10 Days") {
@@ -61,12 +65,14 @@ class AppSettingsActivity : AppCompatActivity() {
         // Observe Theme changes
         lifecycleScope.launch {
             userPreferences.themeFlow.collect { theme ->
+                currentTheme = theme
                 val title = when(theme) {
                     "light" -> "Light"
                     "dark" -> "Dark"
                     else -> "System Default"
                 }
                 updateOptionSubtitle(R.id.opt_theme, title)
+                updateThemeSwitch(isDarkModeFor(theme))
             }
         }
 
@@ -225,12 +231,41 @@ class AppSettingsActivity : AppCompatActivity() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Choose Theme")
             .setItems(themes) { _, which ->
-                val selectedTheme = values[which]
-                lifecycleScope.launch {
-                    userPreferences.saveTheme(selectedTheme)
-                }
+                applyThemeSelection(values[which])
             }
             .show()
+    }
+
+    private fun applyThemeSelection(selectedTheme: String) {
+        if (selectedTheme == currentTheme) return
+        val shouldAnimate = isDarkModeFor(selectedTheme) != isDarkModeFor(currentTheme)
+        if (shouldAnimate) {
+            ThemeTransitionController.prepareTransition(this)
+        }
+        lifecycleScope.launch {
+            userPreferences.saveTheme(selectedTheme)
+        }
+    }
+
+    private fun updateThemeSwitch(isDark: Boolean) {
+        val toggle = themeSwitch ?: return
+        toggle.setOnCheckedChangeListener(null)
+        toggle.isChecked = isDark
+        toggle.setOnCheckedChangeListener { _, checked ->
+            val targetTheme = if (checked) "dark" else "light"
+            applyThemeSelection(targetTheme)
+        }
+    }
+
+    private fun isDarkModeFor(theme: String): Boolean {
+        return when (theme) {
+            "dark" -> true
+            "light" -> false
+            else -> {
+                val mode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                mode == Configuration.UI_MODE_NIGHT_YES
+            }
+        }
     }
 
     private fun showHistoryRetentionDialog() {
