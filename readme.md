@@ -17,175 +17,59 @@
 
 ## Highlights
 
-- Local-only streaming with no accounts or cloud services
-- One app, two roles: Server mode and Client mode
-- Fast library loading with metadata caching and progressive indexing
-- Optional Server PIN for LAN access control
-- Playback resume with configurable history retention
+- **Local Streaming**: No accounts, no cloud, just your local network.
+- **Dual Role**: One app works as both a Media Server and a Streaming Client.
+- **Subtitles & Casting**: Support for external subtitle tracks and Chromecast streaming.
+- **Fast Indexing**: Quick library loading with metadata caching and progressive indexing.
+- **Security**: Optional Server PIN for access control across your LAN.
+- **Playback Resume**: Remembers where you left off with configurable history.
 
-## What's New (Client + Server)
+## What's New
 
-### Server Updates
-- **Live indexing with progress**: scan status is visible while your library builds
-- **Metadata cache**: instant list loads using a cached JSON index
-- **Server dashboard**: uptime, speed, active devices, and streaming stats
-- **Subfolder scanning toggle**: include or exclude subfolders on demand
-- **Server PIN + name**: set a custom server name and optional PIN
-- **Foreground service**: keeps the server running (notifications required)
+- **Subtitles Support**: On-the-fly subtitle uploading and selection (SRT/VTT).
+- **Chromecast Casting**: Stream your local library to any Chromecast-enabled device.
+- **Server Dashboard**: Real-time stats for uptime, speed, and active devices.
+- **Live Indexing**: Watch your library build with a real-time progress indicator.
 
-### Client Updates
-- **LAN discovery with health checks**: find servers automatically and verify readiness
-- **PIN-aware connections**: prompts when a server is protected and stores per-host PINs
-- **Strict host enforcement**: blocks external redirects for safety
-- **Auto-reconnect**: remembers the last server and reconnects when available
-- **Diagnostics panel**: quick logs you can copy for troubleshooting
-- **Theme-aware UI**: server UI matches light/dark theme
+## Data Flow: How It Works
 
-## How It Works
+LANflix uses a simple Server-Client architecture designed for high performance on local networks:
 
-1. **Server mode** hosts your local media folder using an embedded Ktor server (default port 8888).
-2. The server **indexes files and builds a cache**, then publishes itself for LAN discovery.
-3. **Client mode** discovers servers, checks readiness, and loads the server UI in-app.
-4. Playback uses **Media3 (ExoPlayer)** with local resume history stored on-device.
-
-## Architecture and Data Flow
-
-### System Overview
-
-```mermaid
-flowchart LR
-  subgraph DeviceA["Device A: Server Mode"]
-    UI_Server["StreamingActivity / StreamingViewModel"]
-    Prefs["UserPreferences (DataStore)"]
-    Service["MediaServerService (foreground)"]
-    ServerMgr["ServerManager"]
-    NSD["NSD Service (_lanflix._tcp)"]
-    Ktor["KtorMediaStreamingServer"]
-    Cache["MetadataCacheManager"]
-    Storage["SAF Media Folder"]
-    RoomMedia["Room: MediaDatabase"]
-  end
-
-  subgraph DeviceB["Device B: Client Mode"]
-    UI_Client["ClientActivity"]
-    Discovery["ServerDiscoveryManager (NSD)"]
-    Conn["ClientConnectionController"]
-    Web["WebView (Server UI)"]
-    Player["VideoPlayerActivity + ExoPlayer"]
-    History["Room: VideoHistory"]
-  end
-
-  UI_Server --> ServerMgr --> Service --> Ktor
-  UI_Server --> RoomMedia
-  Prefs <--> ServerMgr
-  Prefs <--> Service
-  ServerMgr --> NSD --> Discovery
-  Ktor <--> Cache --> Storage
-  Ktor -- "HTTP /api + stream" --> Web
-  Web -- "video URL" --> Player
-  Player -- "resume/save" --> History
-  UI_Client --> Discovery --> UI_Client
-  UI_Client --> Conn --> Ktor
-```
-
-### Data Flow (Server Start, Discovery, Playback)
-
-```mermaid
-sequenceDiagram
-  participant User
-  participant StreamingActivity
-  participant StreamingViewModel
-  participant MediaRepository
-  participant RoomDB as MediaDatabase
-  participant MediaServerService
-  participant ServerManager
-  participant KtorServer
-  participant CacheManager
-  participant ClientActivity
-  participant ClientConnection
-  participant WebView
-  participant VideoPlayer
-  participant HistoryDB as VideoHistory
-
-  User->>StreamingActivity: Select folder + Start
-  StreamingActivity->>StreamingViewModel: startServer(folderUri)
-  StreamingViewModel->>MediaRepository: scanAndSync(folderUri)
-  MediaRepository->>RoomDB: insert/delete MediaFile rows
-  StreamingViewModel->>ServerManager: requestStartServer()
-  ServerManager->>MediaServerService: ACTION_START (foreground)
-  MediaServerService->>ServerManager: startServerInternal()
-  ServerManager->>KtorServer: start()
-  KtorServer->>CacheManager: refreshIfNeeded/buildCache()
-  CacheManager-->>KtorServer: cache data + scan status
-
-  User->>ClientActivity: Select server / enter PIN
-  ClientActivity->>ClientConnection: ping /api/ping (PIN, clientId)
-  ClientConnection-->>ClientActivity: ready/auth status
-  ClientActivity->>WebView: load server UI (/)
-  WebView->>KtorServer: GET /api/videos or /api/tree
-  WebView->>VideoPlayer: open video URL
-  VideoPlayer->>KtorServer: GET /{filename} (Range)
-  VideoPlayer->>HistoryDB: save/resume position
-```
+1.  **Discovery**: The **Server** broadcasts its presence on the local network using NSD (Network Service Discovery). The **Client** automatically scans for these broadcasts, allowing you to connect without typing IP addresses.
+2.  **Indexing**: When you select a media folder, the Server indexes your files into a local **Room Database** and generates a fast-loading **Metadata Cache**.
+3.  **Streaming**: The Server hosts an internal **Ktor web server**. The Client requests media via HTTP. High-bitrate video is streamed using **ExoPlayer (Media3)**, supporting features like range requests for smooth seeking.
+4.  **Sync**: Playback progress, subtitles, and server settings are managed locally on each device, ensuring your viewing history is always up to date.
 
 ## Getting Started
 
 ### Prerequisites
-- Android device (Android 8.0+ recommended)
-- Devices on the same Wi-Fi or local network
+- Android device (Android 8.0+)
+- Devices must be on the same Wi-Fi or LAN
 - Storage permission for media access
-- Notifications enabled (required to keep the server running)
+- Notifications enabled for the background server
 
 ### Installation
-1. Build the project with Android Studio or Gradle.
-2. Install the APK on one device (server) and another device (client).
-3. Grant requested permissions when prompted.
+1. Build the project using Android Studio or Gradle.
+2. Install the APK on your host device (Server) and playback devices (Clients).
 
-### Run the Server
-1. Open LANflix and choose **Server Mode**.
-2. Select your media folder (the app will remember it).
-3. Tap **Start** to bring the server online.
-4. Optionally set a **Server PIN** in App Settings.
+### Quick Start
+1. **Host**: Open LANflix, choose **Server Mode**, select your folder, and tap **Start**.
+2. **Watch**: Open LANflix on another device, choose **Client Mode**, select your server, and start playing!
 
-### Run the Client
-1. Open LANflix and choose **Client Mode**.
-2. Select a server from the discovered list.
-3. Enter the server PIN if required.
-4. Browse the library and start streaming.
-
-## Features
+## Key Features
 
 ### Server
-- Local library hosting with folder selection
-- Progressive indexing with live status
-- Metadata caching for faster load times
-- Device stats: uptime, speed, active/streaming clients
-- Subfolder scanning toggle and media management view
-- Optional Server PIN and custom server name
+- Local library hosting with easy folder selection.
+- Metadata caching for near-instant library loads.
+- Detailed dashboard: see active clients and streaming speed.
+- Optional Server PIN and custom server name for privacy.
 
 ### Client
-- Automatic LAN server discovery
-- PIN-protected connections
-- In-app server UI with strict host enforcement
-- ExoPlayer-based streaming with resume support
-- Diagnostics log and auto-reconnect
-
-### Playback Resume
-- Saves progress after a short playback threshold
-- Ignores near-finished videos for a cleaner history
-- History retention is configurable (5/10/20/30 days or never)
-
-## Technical Details
-
-- **Architecture**: MVVM
-- **Language**: Kotlin
-- **Video Player**: androidx.media3 (ExoPlayer)
-- **Database**: Room (SQLite)
-- **Networking**: Ktor + LAN discovery
-- **Dependency Injection**: Koin
-
-## Releases and F-Droid
-See `docs/RELEASING.md` for release tags and `docs/FDROID.md` for F-Droid submission notes.
+- Automatic server discovery (no IP typing required).
+- **Subtitles**: Load and switch between multiple subtitle tracks.
+- **Casting**: Direct integration with Chromecast for big-screen viewing.
+- Advanced playback with resume support and history management.
+- Built-in diagnostics for quick troubleshooting.
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
