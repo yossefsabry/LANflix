@@ -4,16 +4,35 @@ import com.thiyagu.media_server.server.KtorMediaStreamingServer
 import com.thiyagu.media_server.server.pages.DiagnosticsPageTemplate
 import com.thiyagu.media_server.server.pages.HomePageTemplate
 import com.thiyagu.media_server.server.pages.LoginPageTemplate
-import io.ktor.http.ContentType
+import io.ktor.http.*
 import io.ktor.server.application.call
-import io.ktor.server.response.respondOutputStream
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.get
+import io.ktor.server.request.path
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 
 internal fun Routing.registerWebRoutes(server: KtorMediaStreamingServer) {
+    get("/static/{path...}") {
+        val path = call.parameters.getAll("path")?.joinToString("/") ?: return@get
+        try {
+            val assetPath = "web/$path"
+            val inputStream = server.appContext.assets.open(assetPath)
+            val contentType = when {
+                path.endsWith(".css", ignoreCase = true) -> ContentType.Text.CSS
+                path.endsWith(".js", ignoreCase = true) -> ContentType.Application.JavaScript
+                path.endsWith(".ttf", ignoreCase = true) -> ContentType.parse("font/ttf")
+                path.endsWith(".woff2", ignoreCase = true) -> ContentType.parse("font/woff2")
+                else -> ContentType.Application.OctetStream
+            }
+            call.respondOutputStream(contentType) {
+                inputStream.use { it.copyTo(this) }
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.NotFound)
+        }
+    }
+
     get("/") {
         call.noStore()
         val mode = call.request.queryParameters["mode"]
@@ -79,9 +98,10 @@ internal fun Routing.registerWebRoutes(server: KtorMediaStreamingServer) {
                 event.waitUntil(
                     caches.open(CACHE_NAME).then((cache) => {
                         return cache.addAll([
-                            'https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap',
-                            'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0',
-                            'https://cdn.tailwindcss.com?plugins=forms,container-queries'
+                            '/',
+                            '/static/css/spline-sans.css',
+                            '/static/css/material-symbols.css',
+                            '/static/js/tailwind.min.js'
                         ]);
                     })
                 );

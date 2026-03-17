@@ -1,0 +1,35 @@
+@font-face {
+  font-family: 'Spline Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/static/fonts/_6_sED73Uf-2WfU2LzycEZousNzn1a1lKWRpZlnYEg.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Spline Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/static/fonts/_6_sED73Uf-2WfU2LzycEZousNzn1a1lKWRpOFnYEg.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Spline Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/static/fonts/_6_sED73Uf-2WfU2LzycEZousNzn1a1lKWRpClnYEg.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Spline Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/static/fonts/_6_sED73Uf-2WfU2LzycEZousNzn1a1lKWRp5l7YEg.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Spline Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/static/fonts/_6_sED73Uf-2WfU2LzycEZousNzn1a1lKWRp317YEg.ttf) format('truetype');
+}

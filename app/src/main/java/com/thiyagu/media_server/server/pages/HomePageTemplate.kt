@@ -19,9 +19,9 @@ object HomePageTemplate {
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
     <meta content="${if (themeParam == "dark") "#0a0a0a" else "#F4F4F5"}" name="theme-color"/>
     <title>LANflix</title>
-    <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="/static/css/spline-sans.css" rel="stylesheet"/>
+    <link href="/static/css/material-symbols.css" rel="stylesheet"/>
+    <script src="/static/js/tailwind.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
