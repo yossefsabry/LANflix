@@ -33,3 +33,7 @@ plan*.md
 plan*.txt
 backup_file
 rule.md
+
+# Keystore files (NEVER commit these)
+*.jks
+*.keystore
