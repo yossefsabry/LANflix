@@ -57,11 +57,27 @@ android {
                 ),
                 "proguard-rules.pro"
             )
+            // Use release keystore from environment (CI) or fall back to debug signing
+            val keystoreFile = System.getenv("KEYSTORE_FILE")
+            if (keystoreFile != null && file(keystoreFile).exists()) {
+                signingConfig = signingConfigs.create("release") {
+                    storeFile = file(keystoreFile)
+                    storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                    keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                    keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                }
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 
     buildFeatures {
         viewBinding = true
+    }
+
+    lint {
+        baseline = file("lint-baseline.xml")
     }
 
     compileOptions {

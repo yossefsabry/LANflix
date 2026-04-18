@@ -6,13 +6,39 @@ import com.thiyagu.media_server.server.pages.HomePageTemplate
 import com.thiyagu.media_server.server.pages.LoginPageTemplate
 import io.ktor.http.*
 import io.ktor.server.application.call
-import io.ktor.server.request.path
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 
 internal fun Routing.registerWebRoutes(server: KtorMediaStreamingServer) {
+    get("/api/icon/{size}") {
+        val size = call.parameters["size"]?.toIntOrNull() ?: 192
+        try {
+            val resources = server.appContext.resources
+            val resId = resources.getIdentifier("ic_launcher", "mipmap", server.appContext.packageName)
+            if (resId == 0) {
+                call.respond(HttpStatusCode.NotFound)
+                return@get
+            }
+            val drawable = androidx.core.content.ContextCompat.getDrawable(server.appContext, resId)
+            if (drawable == null) {
+                call.respond(HttpStatusCode.NotFound)
+                return@get
+            }
+            val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(canvas)
+            call.respondOutputStream(ContentType.Image.PNG) {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, this)
+                bitmap.recycle()
+            }
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.NotFound)
+        }
+    }
+
     get("/static/{path...}") {
         val path = call.parameters.getAll("path")?.joinToString("/") ?: return@get
         try {
@@ -86,11 +112,41 @@ internal fun Routing.registerWebRoutes(server: KtorMediaStreamingServer) {
         }
     }
 
+    get("/manifest.json") {
+        call.respondText(
+            """
+            {
+                "name": "LANflix",
+                "short_name": "LANflix",
+                "description": "Stream local media over your LAN",
+                "start_url": "/?theme=dark",
+                "display": "standalone",
+                "background_color": "#0a0a0a",
+                "theme_color": "#0a0a0a",
+                "orientation": "any",
+                "icons": [
+                    {
+                        "src": "/api/icon/192",
+                        "sizes": "192x192",
+                        "type": "image/png"
+                    },
+                    {
+                        "src": "/api/icon/512",
+                        "sizes": "512x512",
+                        "type": "image/png"
+                    }
+                ]
+            }
+            """.trimIndent(),
+            ContentType.Application.Json
+        )
+    }
+
     get("/sw.js") {
         call.noStore()
         call.respondText(
             """
-            const CACHE_NAME = 'lanflix-v3';
+            const CACHE_NAME = 'lanflix-v4';
             const OFFLINE_URL = '/offline.html';
             
             self.addEventListener('install', (event) => {
@@ -99,6 +155,9 @@ internal fun Routing.registerWebRoutes(server: KtorMediaStreamingServer) {
                     caches.open(CACHE_NAME).then((cache) => {
                         return cache.addAll([
                             '/',
+                            '/manifest.json',
+                            '/api/icon/180',
+                            '/api/icon/192',
                             '/static/css/spline-sans.css',
                             '/static/css/material-symbols.css',
                             '/static/js/tailwind.min.js'

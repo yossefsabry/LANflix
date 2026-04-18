@@ -19,6 +19,11 @@ object HomePageTemplate {
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
     <meta content="${if (themeParam == "dark") "#0a0a0a" else "#F4F4F5"}" name="theme-color"/>
     <title>LANflix</title>
+    <link rel="manifest" href="/manifest.json"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="${if (themeParam == "dark") "black-translucent" else "default"}"/>
+    <meta name="apple-mobile-web-app-title" content="LANflix"/>
+    <link rel="apple-touch-icon" href="/api/icon/180"/>
     <link href="/static/css/spline-sans.css" rel="stylesheet"/>
     <link href="/static/css/material-symbols.css" rel="stylesheet"/>
     <script src="/static/js/tailwind.min.js"></script>
@@ -544,9 +549,39 @@ object HomePageTemplate {
                             // intercept clicks
                             document.body.addEventListener('click', e => {
                                 const link = e.target.closest('a');
-                                if (link && link.href.startsWith(window.location.origin) && link.getAttribute('href').startsWith('/?')) {
+                                if (!link) return;
+                                
+                                const href = link.getAttribute('href');
+                                if (!href) return;
+                                
+                                // Check if this is a video link (not SPA navigation)
+                                // Video links look like: /filename.mp4?path=... (not starting with /?)
+                                const isVideoLink = link.href.startsWith(window.location.origin) 
+                                    && !href.startsWith('/?') 
+                                    && !href.startsWith('/diagnostics')
+                                    && !href.startsWith('/settings')
+                                    && !href.startsWith('/profile')
+                                    && !href.startsWith('/exit')
+                                    && !href.startsWith('/static/')
+                                    && href !== '/'
+                                    && /\.(mp4|mkv|webm|avi|mov|m4v)(\?|${'$'})/i.test(href);
+                                
+                                if (isVideoLink) {
                                     e.preventDefault();
-                                    this.navigate(link.getAttribute('href'));
+                                    const videoUrl = link.href;
+                                    const name = decodeURIComponent(href.split('?')[0].replace(/^\//, ''));
+                                    if (window.VideoPlayer) {
+                                        window.VideoPlayer.open(videoUrl, name);
+                                    } else {
+                                        window.open(videoUrl, '_blank');
+                                    }
+                                    return;
+                                }
+                                
+                                // SPA navigation for internal links
+                                if (link.href.startsWith(window.location.origin) && href.startsWith('/?')) {
+                                    e.preventDefault();
+                                    this.navigate(href);
                                 }
                             });
 
@@ -1254,6 +1289,143 @@ object HomePageTemplate {
         // --- FOOTER ---
         write("""
     </main>
+    
+    <!-- Inline Video Player (for Safari/iPhone) -->
+    <div id="video-player-overlay" class="fixed inset-0 z-[100] bg-black hidden flex-col">
+        <div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent" id="player-controls-top">
+            <button onclick="VideoPlayer.close()" class="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center active:scale-90 transition-transform">
+                <span class="material-symbols-rounded text-white">close</span>
+            </button>
+            <h3 id="player-title" class="text-white text-sm font-bold truncate mx-4 flex-1 text-center"></h3>
+            <div class="w-10"></div>
+        </div>
+        <video id="video-element" class="w-full h-full object-contain" playsinline webkit-playsinline controls controlsList="nodownload">
+            Your browser does not support video playback.
+        </video>
+        <div id="player-error" class="absolute inset-0 flex-col items-center justify-center hidden bg-black/90">
+            <span class="material-symbols-rounded text-6xl text-red-500 mb-4">error</span>
+            <p class="text-white text-lg font-bold mb-2">Cannot Play This Video</p>
+            <p id="player-error-detail" class="text-white/60 text-sm mb-6 text-center max-w-xs">This format may not be supported by your browser.</p>
+            <a id="player-download-link" href="#" class="bg-primary text-black font-bold px-6 py-3 rounded-full active:scale-95 transition-transform">Download Instead</a>
+        </div>
+    </div>
+    
+    <script>
+        const VideoPlayer = {
+            overlay: null,
+            video: null,
+            titleEl: null,
+            errorEl: null,
+            currentUrl: null,
+            controlsTimeout: null,
+
+            init() {
+                this.overlay = document.getElementById('video-player-overlay');
+                this.video = document.getElementById('video-element');
+                this.titleEl = document.getElementById('player-title');
+                this.errorEl = document.getElementById('player-error');
+                
+                if (!this.video) return;
+                
+                this.video.addEventListener('error', () => this.handleError());
+                
+                // Tap to toggle controls
+                this.video.addEventListener('click', () => this.toggleControls());
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (!this.overlay || this.overlay.classList.contains('hidden')) return;
+                    if (e.key === 'Escape') this.close();
+                    if (e.key === ' ') { e.preventDefault(); this.video.paused ? this.video.play() : this.video.pause(); }
+                    if (e.key === 'f') this.toggleFullscreen();
+                });
+            },
+
+            canPlayFormat(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                // Safari natively supports mp4, mov, m4v, mp3, m4a
+                // Chrome supports mp4, webm, ogg
+                const v = document.createElement('video');
+                const formats = {
+                    'mp4': 'video/mp4',
+                    'mov': 'video/quicktime',
+                    'm4v': 'video/mp4',
+                    'webm': 'video/webm',
+                    'ogg': 'video/ogg',
+                    'mkv': 'video/x-matroska',
+                    'avi': 'video/x-msvideo'
+                };
+                const mime = formats[ext] || 'video/mp4';
+                return v.canPlayType(mime) !== '';
+            },
+
+            open(url, title) {
+                if (!this.overlay || !this.video) return;
+                this.currentUrl = url;
+                this.titleEl.textContent = title || 'Video';
+                this.errorEl.classList.add('hidden');
+                this.errorEl.classList.remove('flex');
+                
+                this.overlay.classList.remove('hidden');
+                this.overlay.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                this.video.src = url;
+                this.video.load();
+                this.video.play().catch(() => {});
+                
+                // Auto-hide top controls after 3s
+                this.showControls();
+            },
+
+            close() {
+                if (!this.overlay || !this.video) return;
+                this.video.pause();
+                this.video.removeAttribute('src');
+                this.video.load();
+                this.overlay.classList.add('hidden');
+                this.overlay.classList.remove('flex');
+                document.body.style.overflow = '';
+                this.currentUrl = null;
+            },
+
+            handleError() {
+                this.errorEl.classList.remove('hidden');
+                this.errorEl.classList.add('flex');
+                const link = document.getElementById('player-download-link');
+                if (link && this.currentUrl) link.href = this.currentUrl;
+            },
+
+            toggleControls() {
+                const top = document.getElementById('player-controls-top');
+                if (!top) return;
+                const isHidden = top.style.opacity === '0';
+                if (isHidden) this.showControls();
+                else this.hideControls();
+            },
+
+            showControls() {
+                const top = document.getElementById('player-controls-top');
+                if (top) { top.style.opacity = '1'; top.style.pointerEvents = 'auto'; }
+                clearTimeout(this.controlsTimeout);
+                this.controlsTimeout = setTimeout(() => this.hideControls(), 4000);
+            },
+
+            hideControls() {
+                const top = document.getElementById('player-controls-top');
+                if (top) { top.style.opacity = '0'; top.style.pointerEvents = 'none'; }
+            },
+
+            toggleFullscreen() {
+                if (!this.overlay) return;
+                if (document.fullscreenElement) document.exitFullscreen();
+                else this.overlay.requestFullscreen?.() || this.video.webkitEnterFullscreen?.();
+            }
+        };
+        
+        window.VideoPlayer = VideoPlayer;
+        document.addEventListener('DOMContentLoaded', () => VideoPlayer.init());
+    </script>
     
     <!-- Bottom Navigation -->
     <nav class="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-white/5 px-6 py-2 pb-5 z-50">

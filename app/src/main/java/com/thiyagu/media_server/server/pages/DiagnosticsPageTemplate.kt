@@ -12,6 +12,11 @@ object DiagnosticsPageTemplate {
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
     <meta content="${if (themeParam == "dark") "#0a0a0a" else "#F4F4F5"}" name="theme-color"/>
     <title>LANflix - Diagnostics</title>
+    <link rel="manifest" href="/manifest.json"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="${if (themeParam == "dark") "black-translucent" else "default"}"/>
+    <meta name="apple-mobile-web-app-title" content="LANflix"/>
+    <link rel="apple-touch-icon" href="/api/icon/180"/>
     <link href="/static/css/spline-sans.css" rel="stylesheet"/>
     <link href="/static/css/material-symbols.css" rel="stylesheet"/>
     <script src="/static/js/tailwind.min.js"></script>

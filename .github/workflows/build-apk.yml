@@ -1,0 +1,119 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Run lint
+        run: ./gradlew :app:lintDebug
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Decode keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > ${{ github.workspace }}/release.jks
+          echo "KEYSTORE_DECODED=true" >> $GITHUB_ENV
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Build Release APK (signed)
+        if: env.KEYSTORE_DECODED == 'true'
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Build Release APK (debug-signed)
+        if: env.KEYSTORE_DECODED != 'true'
+        run: ./gradlew assembleRelease
+
+      - name: Rename APKs
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          RELEASE_APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          cp "$DEBUG_APK" "app/build/outputs/apk/debug/LANflix-v${VERSION}-debug.apk"
+          cp "$RELEASE_APK" "app/build/outputs/apk/release/LANflix-v${VERSION}-release.apk"
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LANflix-debug
+          path: app/build/outputs/apk/debug/LANflix-*-debug.apk
+          retention-days: 30
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LANflix-release
+          path: app/build/outputs/apk/release/LANflix-*-release.apk
+          retention-days: 30
+
+      - name: Build summary
+        if: success()
+        run: |
+          echo "## Build Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Debug APK" >> $GITHUB_STEP_SUMMARY
+          ls -lh app/build/outputs/apk/debug/LANflix-*.apk | awk '{print "- " $NF " (" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Release APK" >> $GITHUB_STEP_SUMMARY
+          ls -lh app/build/outputs/apk/release/LANflix-*.apk | awk '{print "- " $NF " (" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f ${{ github.workspace }}/release.jks
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release APK
+        uses: actions/download-artifact@v4
+        with:
+          name: LANflix-release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: LANflix-*-release.apk
+          generate_release_notes: true

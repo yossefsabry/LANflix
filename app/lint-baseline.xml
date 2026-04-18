@@ -1,0 +1,3665 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.1.1" type="baseline" client="gradle" dependencies="false" name="AGP (8.1.1)" variant="all" version="8.1.1">
+
+    <issue
+        id="DuplicateIncludedIds"
+        message="Duplicate id @+id/icon, defined or included multiple times in layout/activity_app_settings.xml: [layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/icon, layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/icon]"
+        errorLine1="            &lt;include layout=&quot;@layout/item_profile_option_toggle&quot;"
+        errorLine2="            ^">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="89"
+            column="13"
+            message="Duplicate id @+id/icon, defined or included multiple times in layout/activity_app_settings.xml: [layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/icon, layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/icon]"/>
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="21"
+            column="13"
+            message="Defined here, included via layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/icon"/>
+        <location
+            file="src/main/res/layout/item_profile_option_toggle.xml"
+            line="21"
+            column="13"
+            message="Defined here, included via layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/icon"/>
+    </issue>
+
+    <issue
+        id="DuplicateIncludedIds"
+        message="Duplicate id @+id/subtitle, defined or included multiple times in layout/activity_app_settings.xml: [layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/subtitle, layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/subtitle]"
+        errorLine1="            &lt;include layout=&quot;@layout/item_profile_option_toggle&quot;"
+        errorLine2="            ^">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="89"
+            column="13"
+            message="Duplicate id @+id/subtitle, defined or included multiple times in layout/activity_app_settings.xml: [layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/subtitle, layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/subtitle]"/>
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="47"
+            column="17"
+            message="Defined here, included via layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/subtitle"/>
+        <location
+            file="src/main/res/layout/item_profile_option_toggle.xml"
+            line="47"
+            column="17"
+            message="Defined here, included via layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/subtitle"/>
+    </issue>
+
+    <issue
+        id="DuplicateIncludedIds"
+        message="Duplicate id @+id/title, defined or included multiple times in layout/activity_app_settings.xml: [layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/title, layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/title]"
+        errorLine1="            &lt;include layout=&quot;@layout/item_profile_option_toggle&quot;"
+        errorLine2="            ^">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="89"
+            column="13"
+            message="Duplicate id @+id/title, defined or included multiple times in layout/activity_app_settings.xml: [layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/title, layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/title]"/>
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="38"
+            column="17"
+            message="Defined here, included via layout/activity_app_settings.xml => layout/item_profile_option.xml defines @+id/title"/>
+        <location
+            file="src/main/res/layout/item_profile_option_toggle.xml"
+            line="38"
+            column="17"
+            message="Defined here, included via layout/activity_app_settings.xml => layout/item_profile_option_toggle.xml defines @+id/title"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 21): `android.content.Context#getSystemService`"
+        errorLine1="                val clipboard = context.getSystemService(ClipboardManager::class.java)"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/client/ClientDiagnosticsController.kt"
+            line="59"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 21): `java.util.concurrent.ConcurrentHashMap#compute`"
+        errorLine1="        activeStreamsByClientKey.compute(clientKey) { _, existing ->"
+        errorLine2="                                 ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/server/ClientStatsTracker.kt"
+            line="29"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 21): `java.util.concurrent.ConcurrentHashMap#computeIfAbsent`"
+        errorLine1="        videoIndexByName.computeIfAbsent(name) { CopyOnWriteArrayList() }.add(resolvedPath)"
+        errorLine2="                         ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/server/KtorMediaStreamingServer.kt"
+            line="331"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 21): `java.util.concurrent.ConcurrentHashMap#computeIfAbsent`"
+        errorLine1="                videoIndexByName.computeIfAbsent(video.name) { CopyOnWriteArrayList() }.add(video.path)"
+        errorLine2="                                 ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/server/KtorMediaStreamingServer.kt"
+            line="485"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 23 (current min is 21): `android.content.Context#getSystemService`"
+        errorLine1="        val manager = getSystemService(NotificationManager::class.java)"
+        errorLine2="                      ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/service/MediaServerService.kt"
+            line="216"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 21): `java.util.Collection#removeIf`"
+        errorLine1="                        lastSeenByKey.entries.removeIf { entry ->"
+        errorLine2="                                              ~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/server/ServerDiscoveryManager.kt"
+            line="110"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 24 (current min is 21): `java.util.concurrent.ConcurrentHashMap#newKeySet`"
+        errorLine1="    private val cachedHiddenVideos: MutableSet&lt;String> = ConcurrentHashMap.newKeySet()"
+        errorLine2="                                                                           ~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/utils/VideoVisibilityManager.kt"
+            line="13"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:windowLightStatusBar` requires API level 23 (current min is 21)"
+        errorLine1="        &lt;item name=&quot;android:windowLightStatusBar&quot;>true&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="12"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details."
+        errorLine1="        targetSdk = 34"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `networkSecurityConfig` is only used in API level 24 and higher (current min is 21)"
+        errorLine1="        android:networkSecurityConfig=&quot;@xml/network_security_config&quot;>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="CustomSplashScreen"
+        message="The application should not provide its own launch screen"
+        errorLine1="class SplashActivity : AppCompatActivity() {"
+        errorLine2="      ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/SplashActivity.kt"
+            line="16"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="MissingInflatedId"
+        message="`@layout/activity_video_player` does not contain a declaration with id `lanflix_speed`"
+        errorLine1="        speedLabel = findViewById(R.id.lanflix_speed)"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/VideoPlayerActivity.kt"
+            line="65"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="MissingInflatedId"
+        message="`@layout/activity_video_player` does not contain a declaration with id `lanflix_title`"
+        errorLine1="        titleLabel = findViewById(R.id.lanflix_title)"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/VideoPlayerActivity.kt"
+            line="66"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="EllipsizeMaxLines"
+        message="Combining `ellipsize=middle` and `maxLines=1` can lead to crashes. Use `singleLine=true` instead."
+        errorLine1="                android:maxLines=&quot;1&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_video_management.xml"
+            line="61"
+            column="17"/>
+        <location
+            file="src/main/res/layout/item_video_management.xml"
+            line="62"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of org.jetbrains.kotlin:kotlin-stdlib than 1.9.0 is available: 2.1.10"
+        errorLine1="                &quot;include&quot; to listOf(&quot;*.jar&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="105"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.12.0 is available: 1.18.0"
+        errorLine1="            )"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="106"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.appcompat:appcompat than 1.6.1 is available: 1.7.1"
+        errorLine1="        )"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="107"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.constraintlayout:constraintlayout than 2.1.4 is available: 2.2.1"
+        errorLine1="    )"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="108"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.material:material than 1.11.0 is available: 1.13.0"
+        errorLine1="    implementation(&quot;org.jetbrains.kotlin:kotlin-stdlib:1.9.0&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="109"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.ext:junit than 1.1.5 is available: 1.3.0"
+        errorLine1="    implementation(&quot;io.ktor:ktor-server-auto-head-response:2.3.7&quot;)"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="119"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.espresso:espresso-core than 3.5.1 is available: 3.7.0"
+        errorLine1="    implementation(&quot;io.ktor:ktor-server-caching-headers:2.3.7&quot;)"
+        errorLine2="         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="121"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.7.0 is available: 2.10.0"
+        errorLine1="        &quot;androidx.test.espresso:espresso-core:3.5.1&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="125"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-ktx than 2.7.0 is available: 2.10.0"
+        errorLine1="    )"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="126"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.datastore:datastore-preferences than 1.0.0 is available: 1.2.1"
+        errorLine1="    implementation(&quot;androidx.lifecycle:lifecycle-runtime-ktx:2.7.0&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="129"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.4"
+        errorLine1="    implementation(&quot;androidx.datastore:datastore-preferences:1.0.0&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="133"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.4"
+        errorLine1=""
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="134"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.4"
+        errorLine1="    // Room Database"
+        errorLine2="         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="135"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer than 1.2.0 is available: 1.10.0"
+        errorLine1="    // Glide"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="144"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-ui than 1.2.0 is available: 1.10.0"
+        errorLine1="    implementation(&quot;com.github.bumptech.glide:glide:4.16.0&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="145"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-common than 1.2.0 is available: 1.10.0"
+        errorLine1=""
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="146"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-cast than 1.2.0 is available: 1.10.0"
+        errorLine1="    // Media3 (ExoPlayer)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="147"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.gms:play-services-cast-framework than 21.4.0 is available: 22.3.1"
+        errorLine1="    implementation(&quot;androidx.media3:media3-ui:1.2.0&quot;)"
+        errorLine2="        ^">
+        <location
+            file="build.gradle.kts"
+            line="149"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.code.gson:gson than 2.10.1 is available: 2.11.0"
+        errorLine1="            &quot;play-services-cast-framework:21.4.0&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="154"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    private val castPlayer = CastPlayer(castContext)"
+        errorLine2="                             ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="39"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        castPlayer.release()"
+        errorLine2="                   ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="104"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            castPlayer.setMediaItem(item, position)"
+        errorLine2="                       ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="137"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            castPlayer.prepare()"
+        errorLine2="                       ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="138"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            castPlayer.playWhenReady = true"
+        errorLine2="                       ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="139"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            castPlayer.playWhenReady = true"
+        errorLine2="                                       ~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="139"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        val position = castPlayer.currentPosition"
+        errorLine2="                                  ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/CastPlaybackController.kt"
+            line="151"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        TrackSelectionDialogBuilder("
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/PlayerUiController.kt"
+            line="107"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        ).build().show()"
+        errorLine2="          ~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/player/PlayerUiController.kt"
+            line="112"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        playerView.setControllerShowTimeoutMs(3000)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/VideoPlayerActivity.kt"
+            line="68"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        playerView.setControllerHideOnTouch(true)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/VideoPlayerActivity.kt"
+            line="69"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@dimen/exo_styled_bottom_bar_height` is marked as private in androidx.media3:media3-ui:1.2.0"
+        errorLine1="        android:layout_height=&quot;@dimen/exo_styled_bottom_bar_height&quot;"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="15"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@dimen/exo_styled_controls_padding` is marked as private in androidx.media3:media3-ui:1.2.0"
+        errorLine1="        android:padding=&quot;@dimen/exo_styled_controls_padding&quot;"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="123"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@layout/exo_player_control_rewind_button` is marked as private in androidx.media3:media3-ui:1.2.0"
+        errorLine1="        &lt;include layout=&quot;@layout/exo_player_control_rewind_button&quot; />"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="131"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@layout/exo_player_control_ffwd_button` is marked as private in androidx.media3:media3-ui:1.2.0"
+        errorLine1="        &lt;include layout=&quot;@layout/exo_player_control_ffwd_button&quot; />"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="137"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="DiscouragedApi"
+        message="Use of this function is discouraged because resource reflection makes it harder to perform build optimizations and compile-time verification of code. It is much more efficient to retrieve resources by identifier (e.g. `R.foo.bar`) than by name (e.g. `getIdentifier(&quot;bar&quot;, &quot;foo&quot;, null)`)."
+        errorLine1="            val resId = resources.getIdentifier(&quot;ic_launcher&quot;, &quot;mipmap&quot;, server.appContext.packageName)"
+        errorLine2="                                  ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/server/routes/WebRoutes.kt"
+            line="19"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="SetJavaScriptEnabled"
+        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully"
+        errorLine1="            javaScriptEnabled = true"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/client/ClientWebViewController.kt"
+            line="52"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ExportedReceiver"
+        message="Exported receiver does not require permission"
+        errorLine1="        &lt;receiver"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="99"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="InsecureBaseConfiguration"
+        message="Insecure Base Configuration"
+        errorLine1="    &lt;base-config cleartextTrafficPermitted=&quot;true&quot;>"
+        errorLine2="                                            ~~~~">
+        <location
+            file="src/main/res/xml/network_security_config.xml"
+            line="9"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="DrawAllocation"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)"
+        errorLine1="        val gradient = LinearGradient("
+        errorLine2="                       ^">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ThemeTransition.kt"
+            line="129"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="WakelockTimeout"
+        message="Provide a timeout when requesting a wakelock with `PowerManager.Wakelock.acquire(long timeout)`. This will ensure the OS will cleanup any wakelocks that last longer than you intend, and will save your user&apos;s battery."
+        errorLine1="                wakeLock?.acquire()"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/service/MediaServerService.kt"
+            line="193"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="        notifyDataSetChanged()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ui/adapter/MediaTreeAdapter.kt"
+            line="26"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; SDK_INT is never &lt; 21"
+        errorLine1="        if (Build.VERSION.SDK_INT &lt; 11) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/utils/RealPathUtil.java"
+            line="20"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; SDK_INT is never &lt; 21"
+        errorLine1="        else if (Build.VERSION.SDK_INT &lt; 19) {"
+        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/utils/RealPathUtil.java"
+            line="24"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; SDK_INT is always >= 21"
+        errorLine1="        final boolean isKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/utils/RealPathUtil.java"
+            line="78"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="This field leaks a context object"
+        errorLine1="class MediaManagementViewModel(private val context: Context) : ViewModel() {"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/viewmodel/MediaManagementViewModel.kt"
+            line="20"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="                            &lt;LinearLayout"
+        errorLine2="                             ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="185"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="VectorPath"
+        message="Very long vector path (904 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector."
+        errorLine1="      android:pathData=&quot;M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.06,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.06,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z&quot;/>"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res-icons/drawable/ic_settings.xml"
+            line="9"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="VectorPath"
+        message="Very long vector path (818 characters), which is bad for performance. Considering reducing precision, removing minor details or rasterizing vector."
+        errorLine1="      android:pathData=&quot;M20.38,8.57l-1.63,1.63C18.88,10.45 18.88,11.05 18.95,11.55C18.07,10.62 16.92,9.93 15.65,9.58L15.65,9.58C14.77,9.33 13.88,9.25 13,9.34V9C13,8.45 12.55,8 12,8C11.45,8 11,8.45 11,9V9.34C10.12,9.25 9.23,9.33 8.35,9.58L8.35,9.58C7.08,9.93 5.93,10.62 5.05,11.55C5.12,11.05 5.12,10.45 5.25,10.2L3.62,8.57C3.23,8.18 2.6,8.18 2.21,8.57C1.82,8.96 1.82,9.59 2.21,9.98L3.84,11.61C3.39,12.58 3.09,13.62 3.01,14.69C2.93,15.76 3.07,16.84 3.42,17.86C4.16,20.01 6.2,21.56 8.58,21.9C9.7,22.06 10.85,22.06 11.97,21.9C14.35,21.56 16.39,20.01 17.13,17.86C17.48,16.84 17.62,15.76 17.54,14.69C17.46,13.62 17.16,12.58 16.71,11.61L18.34,9.98C18.73,9.59 18.73,8.96 18.34,8.57C17.95,8.18 17.32,8.18 16.93,8.57H20.38V8.57ZM12,19.5C9.51,19.5 7.5,17.49 7.5,15C7.5,12.51 9.51,10.5 12,10.5C14.49,10.5 16.5,12.51 16.5,15C16.5,17.49 14.49,19.5 12,19.5Z&quot;/>"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res-icons/drawable/ic_speed.xml"
+            line="9"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="KaptUsageInsteadOfKsp"
+        message="This library supports using KSP instead of kapt, which greatly improves performance. Learn more: https://developer.android.com/studio/build/migrate-to-ksp"
+        errorLine1="    // Room Database"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="135"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="DisableBaselineAlignment"
+        message="Set `android:baselineAligned=&quot;false&quot;` on this element for better performance"
+        errorLine1="                    &lt;LinearLayout"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="232"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="InefficientWeight"
+        message="Use a `layout_width` of `0dp` instead of `wrap_content` for better performance"
+        errorLine1="                android:layout_width=&quot;wrap_content&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="92"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/NoActionBarTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_media_management.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_privacy_security.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_splash.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `@color/lanflix_bg` with a theme that also paints a background (inferred theme is `@style/AppTheme`)"
+        errorLine1="    android:background=&quot;@color/lanflix_bg&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `#000000` with a theme that also paints a background (inferred theme is `@style/NoActionBarTheme`)"
+        errorLine1="    android:background=&quot;#000000&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_video_player.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.bg_home_root` appears to be unused">
+        <location
+            file="src/main/res/drawable/bg_home_root.jpg"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.button_primary` appears to be unused"
+        errorLine1="&lt;ripple xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-ui/drawable/button_primary.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.button_secondary` appears to be unused"
+        errorLine1="&lt;ripple xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-ui/drawable/button_secondary.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.purple_200` appears to be unused"
+        errorLine1="    &lt;color name=&quot;purple_200&quot;>#FFBB86FC&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="3"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.purple_500` appears to be unused"
+        errorLine1="    &lt;color name=&quot;purple_500&quot;>#FF6200EE&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="4"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.purple_700` appears to be unused"
+        errorLine1="    &lt;color name=&quot;purple_700&quot;>#FF3700B3&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="5"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.teal_200` appears to be unused"
+        errorLine1="    &lt;color name=&quot;teal_200&quot;>#FF03DAC5&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="6"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.teal_700` appears to be unused"
+        errorLine1="    &lt;color name=&quot;teal_700&quot;>#FF018786&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="7"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.lanflix_bg_dark` appears to be unused"
+        errorLine1="    &lt;color name=&quot;lanflix_bg_dark&quot;>#FFFFFF&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="27"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.gradient_start` appears to be unused"
+        errorLine1="    &lt;color name=&quot;gradient_start&quot;>#FFFFFF&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="30"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.gradient_middle` appears to be unused"
+        errorLine1="    &lt;color name=&quot;gradient_middle&quot;>#F4F4F5&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="31"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.gradient_end` appears to be unused"
+        errorLine1="    &lt;color name=&quot;gradient_end&quot;>#E4E4E7&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="32"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.card_background` appears to be unused"
+        errorLine1="    &lt;color name=&quot;card_background&quot;>#FFFFFF&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="33"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.card_border` appears to be unused"
+        errorLine1="    &lt;color name=&quot;card_border&quot;>#E4E4E7&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="34"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.status_running` appears to be unused"
+        errorLine1="    &lt;color name=&quot;status_running&quot;>#4CAF50&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="35"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.status_stopped` appears to be unused"
+        errorLine1="    &lt;color name=&quot;status_stopped&quot;>#757575&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="36"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.text_primary` appears to be unused"
+        errorLine1="    &lt;color name=&quot;text_primary&quot;>#000000&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="37"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.text_secondary` appears to be unused"
+        errorLine1="    &lt;color name=&quot;text_secondary&quot;>#757575&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="38"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.accent_purple` appears to be unused"
+        errorLine1="    &lt;color name=&quot;accent_purple&quot;>#667eea&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/colors.xml"
+            line="39"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.empty_divider` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res-ui/drawable/empty_divider.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.glass_card_background` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/glass_card_background.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.gradient_background` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res-ui/drawable/gradient_background.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.gradient_overlay` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable/gradient_overlay.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_browse_tree` appears to be unused">
+        <location
+            file="src/main/res/drawable/ic_browse_tree.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_download` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-icons/drawable/ic_download.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_home` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-icons/drawable/ic_home.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_hub` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-icons/drawable/ic_hub.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.mipmap.ic_launcher` appears to be unused"
+        errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_launcher_background` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-icons/drawable/ic_launcher_background.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_launcher_foreground` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/drawable-v24/ic_launcher_foreground.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.mipmap.ic_launcher_round` appears to be unused"
+        errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_photo_camera` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-icons/drawable/ic_photo_camera.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_server` appears to be unused"
+        errorLine1="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res-icons/drawable/ic_server.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.status_badge_stopped` appears to be unused"
+        errorLine1="&lt;shape xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res-ui/drawable/status_badge_stopped.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.action_connect` appears to be unused"
+        errorLine1="    &lt;string name=&quot;action_connect&quot;>Connect&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="12"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.dialog_password_title` appears to be unused"
+        errorLine1="    &lt;string name=&quot;dialog_password_title&quot;>Password Required&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="15"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.dialog_password_message` appears to be unused"
+        errorLine1="    &lt;string name=&quot;dialog_password_message&quot;>Enter password for %s&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="16"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.hint_password` appears to be unused"
+        errorLine1="    &lt;string name=&quot;hint_password&quot;>Password&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="17"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.error_incorrect_password` appears to be unused"
+        errorLine1="    &lt;string name=&quot;error_incorrect_password&quot;>Incorrect Password&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="18"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UselessParent"
+        message="This `LinearLayout` layout or its `FrameLayout` parent is unnecessary; transfer the `background` attribute to the other view"
+        errorLine1="    &lt;LinearLayout"
+        errorLine2="     ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_top_bar.xml"
+            line="10"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/drawable/ic_lanflix_logo.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/bg_home.jpg` in densityless folder">
+        <location
+            file="src/main/res/drawable/bg_home.jpg"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/bg_home_root.jpg` in densityless folder">
+        <location
+            file="src/main/res/drawable/bg_home_root.jpg"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/ic_browse_tree.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/ic_browse_tree.png"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/ic_lanflix_logo.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/ic_lanflix_logo.png"/>
+    </issue>
+
+    <issue
+        id="SmallSp"
+        message="Avoid using sizes smaller than `11sp`: `10sp`"
+        errorLine1="                android:textSize=&quot;10sp&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="225"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="SmallSp"
+        message="Avoid using sizes smaller than `11sp`: `10sp`"
+        errorLine1="                                    android:textSize=&quot;10sp&quot;"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="159"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="SmallSp"
+        message="Avoid using sizes smaller than `11sp`: `10sp`"
+        errorLine1="                                android:textSize=&quot;10sp&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="248"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="SmallSp"
+        message="Avoid using sizes smaller than `11sp`: `10sp`"
+        errorLine1="                                android:textSize=&quot;10sp&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="272"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="ViewConstructor"
+        message="Custom view `ThemeWaveOverlayView` is missing constructor used by tools: `(Context)` or `(Context,AttributeSet)` or `(Context,AttributeSet,int)`"
+        errorLine1="class ThemeWaveOverlayView("
+        errorLine2="      ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ThemeTransition.kt"
+            line="51"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="21"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="37"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="17"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="20"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageView"
+        errorLine2="             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="29"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageView"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="67"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageView"
+        errorLine2="             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="101"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                    &lt;ImageView"
+        errorLine2="                     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="129"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageView"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="164"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageView"
+        errorLine2="             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="189"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                    &lt;ImageView"
+        errorLine2="                     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="219"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageView"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="254"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageView"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_media_management.xml"
+            line="28"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="21"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                        &lt;ImageView"
+        errorLine2="                         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="89"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                        &lt;ImageView"
+        errorLine2="                         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="134"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                        &lt;ImageView"
+        errorLine2="                         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="179"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                        &lt;ImageView"
+        errorLine2="                         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="224"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                        &lt;ImageView"
+        errorLine2="                         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="269"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_privacy_security.xml"
+            line="21"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="21"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                 &lt;ImageView"
+        errorLine2="                  ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="75"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                    &lt;ImageView"
+        errorLine2="                     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="94"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageView"
+        errorLine2="                 ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="120"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="    &lt;ImageView"
+        errorLine2="     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_splash.xml"
+            line="10"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageButton"
+        errorLine2="                 ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="39"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                    &lt;ImageView"
+        errorLine2="                     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="55"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                        &lt;ImageView"
+        errorLine2="                         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="121"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                                &lt;ImageView"
+        errorLine2="                                 ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="191"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                            &lt;ImageView"
+        errorLine2="                             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="321"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                            &lt;ImageView"
+        errorLine2="                             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="371"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                            &lt;ImageView"
+        errorLine2="                             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="430"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                            &lt;ImageView"
+        errorLine2="                             ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="480"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                    &lt;ImageView"
+        errorLine2="                     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="47"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="20"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="55"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option_toggle.xml"
+            line="20"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_server_discovered.xml"
+            line="21"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_server_discovered.xml"
+            line="53"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_server_discovered.xml"
+            line="61"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_video_management.xml"
+            line="19"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_video_management.xml"
+            line="28"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageButton"
+        errorLine2="             ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="51"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageButton"
+        errorLine2="             ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="55"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageButton"
+        errorLine2="             ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="59"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="            &lt;ImageButton"
+        errorLine2="             ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="63"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="                &lt;ImageButton"
+        errorLine2="                 ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="82"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="110"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="127"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="133"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_lanflix.xml"
+            line="139"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageButton"
+        errorLine2="         ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_controls_top_bar.xml"
+            line="62"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="KeyboardInaccessibleWidget"
+        message="&apos;clickable&apos; attribute found, please also add &apos;focusable&apos;"
+        errorLine1="                    android:clickable=&quot;true&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="127"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="KeyboardInaccessibleWidget"
+        message="&apos;clickable&apos; attribute found, please also add &apos;focusable&apos;"
+        errorLine1="                android:clickable=&quot;true&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="215"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                loadingText.text = &quot;Loading...&quot;"
+        errorLine2="                                    ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ClientActivity.kt"
+            line="396"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                loadingText.text = &quot;Loading...&quot;"
+        errorLine2="                                    ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ClientActivity.kt"
+            line="407"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                loadingText.text = &quot;Loading...&quot;"
+        errorLine2="                                    ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ClientActivity.kt"
+            line="415"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                loadingText.text = &quot;Loading...&quot;"
+        errorLine2="                                    ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/ClientActivity.kt"
+            line="419"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                btnDetails.text = &quot;View Details&quot;"
+        errorLine2="                                   ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/CrashActivity.kt"
+            line="39"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                btnDetails.text = &quot;Hide Details&quot;"
+        errorLine2="                                   ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/CrashActivity.kt"
+            line="42"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="        binding.seekResult.text = &quot;Running seek test...&quot;"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="118"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            binding.seekResult.text = &quot;Median: ${medianMs}ms (Samples: $detail)&quot;"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="133"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.seekResult.text = &quot;Median: ${medianMs}ms (Samples: $detail)&quot;"
+        errorLine2="                                       ~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="133"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.seekResult.text = &quot;Median: ${medianMs}ms (Samples: $detail)&quot;"
+        errorLine2="                                                          ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="133"
+            column="59"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="        binding.throughputResult.text = &quot;Running throughput test...&quot;"
+        errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="143"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            binding.throughputResult.text = &quot;${&quot;%.1f&quot;.format(mbps)} Mbps ($status, target ${TARGET_MBPS} Mbps)&quot;"
+        errorLine2="                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="155"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.throughputResult.text = &quot;${&quot;%.1f&quot;.format(mbps)} Mbps ($status, target ${TARGET_MBPS} Mbps)&quot;"
+        errorLine2="                                                ~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="155"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.throughputResult.text = &quot;${&quot;%.1f&quot;.format(mbps)} Mbps ($status, target ${TARGET_MBPS} Mbps)&quot;"
+        errorLine2="                                                                   ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="155"
+            column="68"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.throughputResult.text = &quot;${&quot;%.1f&quot;.format(mbps)} Mbps ($status, target ${TARGET_MBPS} Mbps)&quot;"
+        errorLine2="                                                                                 ~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="155"
+            column="82"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.throughputResult.text = &quot;${&quot;%.1f&quot;.format(mbps)} Mbps ($status, target ${TARGET_MBPS} Mbps)&quot;"
+        errorLine2="                                                                                                        ~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="155"
+            column="105"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="        binding.existsResult.text = &quot;Checking file existence...&quot;"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="165"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            binding.existsResult.text = &quot;$status (${durationMs}ms). Move the file and rerun to validate refresh.&quot;"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="174"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.existsResult.text = &quot;$status (${durationMs}ms). Move the file and rerun to validate refresh.&quot;"
+        errorLine2="                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="174"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="        binding.existsResult.text = &quot;Refreshing server cache...&quot;"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/DiagnosticsActivity.kt"
+            line="182"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            text = &quot;Testing...&quot;"
+        errorLine2="                    ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/NetworkInfoActivity.kt"
+            line="78"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                text = &quot;Run Network Test&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/NetworkInfoActivity.kt"
+            line="82"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                        binding.serverUrlText.text = &quot;Stopping...&quot;"
+        errorLine2="                                                      ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="72"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                        binding.serverUrlText.text = &quot;Starting...&quot;"
+        errorLine2="                                                      ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="76"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                         binding.serverUrlText.text = &quot;Error&quot;"
+        errorLine2="                                                       ~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="95"
+            column="56"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;$count Videos&quot;"
+        errorLine2="                                                 ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="115"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;$count Videos&quot;"
+        errorLine2="                                                        ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="115"
+            column="57"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;Indexing: ${status.count} found&quot;"
+        errorLine2="                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="125"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;Indexing: ${status.count} found&quot;"
+        errorLine2="                                                  ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="125"
+            column="51"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;Indexing: ${status.count} found&quot;"
+        errorLine2="                                                                           ~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="125"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;${viewModel.librarySize.value} Videos&quot;"
+        errorLine2="                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="129"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                    binding.tvStatLibrary.text = &quot;${viewModel.librarySize.value} Videos&quot;"
+        errorLine2="                                                                                ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="129"
+            column="81"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.statusBadge.text = &quot;ONLINE&quot;"
+        errorLine2="                                        ~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="349"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.btnStartServer.text = &quot;Stop&quot;"
+        errorLine2="                                           ~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="353"
+            column="44"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.statusBadge.text = &quot;OFFLINE&quot;"
+        errorLine2="                                        ~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="369"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            binding.btnStartServer.text = &quot;Start&quot;"
+        errorLine2="                                           ~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="373"
+            column="44"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="        binding.statusBadge.text = &quot;STOPPING&quot;"
+        errorLine2="                                    ~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="390"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="        binding.btnStartServer.text = &quot;Stopping...&quot;"
+        errorLine2="                                       ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/StreamingActivity.kt"
+            line="394"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
+        errorLine1="            castStatusBanner?.text = &quot;Casting to $name&quot;"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/VideoPlayerActivity.kt"
+            line="181"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            castStatusBanner?.text = &quot;Casting to $name&quot;"
+        errorLine2="                                      ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/thiyagu/media_server/VideoPlayerActivity.kt"
+            line="181"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;App Settings&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;App Settings&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Playback&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Playback&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="57"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Appearance&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Appearance&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="80"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Notifications&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Notifications&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="97"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Server&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Server&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="117"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;History&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;History&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_app_settings.xml"
+            line="141"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;CONNECT TO SERVER&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;CONNECT TO SERVER&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="23"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Enter Server IP (e.g., 192.168.1.5)&quot;, should use `@string` resource"
+        errorLine1="                android:hint=&quot;Enter Server IP (e.g., 192.168.1.5)&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="57"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connect&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Connect&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="70"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;AVAILABLE SERVERS&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;AVAILABLE SERVERS&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="94"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Diagnostics&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Diagnostics&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="112"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Disconnect&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Disconnect&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="158"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Loading...&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Loading...&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_client.xml"
+            line="184"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Something Went Wrong&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Something Went Wrong&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="28"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;The app encountered an unexpected error.\nWe&apos;re sorry for the inconvenience.&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;The app encountered an unexpected error.\nWe&apos;re sorry for the inconvenience.&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="38"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Restart App&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Restart App&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="49"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;View Details&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;View Details&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="62"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Error Details:&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Error Details:&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_crash.xml"
+            line="83"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Diagnostics&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Diagnostics&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="34"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Server&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Server&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="70"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;No server connected&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;No server connected&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="80"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Open Client&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Open Client&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="89"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Test Video&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Test Video&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="117"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;No video selected&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;No video selected&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="127"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Refresh&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Refresh&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="142"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Choose&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Choose&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="156"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Seek Stress Test&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Seek Stress Test&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="185"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Run to measure seek latency&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Run to measure seek latency&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="195"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Run Seek Test&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Run Seek Test&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="204"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Throughput Test&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Throughput Test&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="232"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Target: 11 Mbps&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Target: 11 Mbps&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="242"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Run Throughput Test&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Run Throughput Test&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="251"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;File Exists Test&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;File Exists Test&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="279"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Move a file and rerun to validate refresh speed&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Move a file and rerun to validate refresh speed&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="289"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Run Exists&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Run Exists&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="304"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Refresh Cache&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Refresh Cache&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_diagnostics.xml"
+            line="318"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Welcome back,&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;Welcome back,&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="44"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;User&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;User&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="52"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;CHOOSE MODE&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;CHOOSE MODE&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="80"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Host Server&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Host Server&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="148"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Share your locally stored videos with other devices on your network.&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Share your locally stored videos with other devices on your network.&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="156"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connect as Client&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Connect as Client&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="238"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Join an existing LANflix server to watch videos.&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;Join an existing LANflix server to watch videos.&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_home.xml"
+            line="246"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Manage Library&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;Manage Library&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_media_management.xml"
+            line="42"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Network Info&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Network Info&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connection Details&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Connection Details&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="57"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;IP Address&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;IP Address&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="105"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;192.168.1.45&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;192.168.1.45&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="113"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Port&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Port&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="150"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;8080&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;8080&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="158"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connection Status&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Connection Status&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="195"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connected&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Connected&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="203"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Network Type&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Network Type&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="240"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;WiFi&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;WiFi&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="248"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connected Devices&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Connected Devices&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="285"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="293"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Run Network Test&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Run Network Test&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="309"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Network diagnostics will test your connection speed and stability&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Network diagnostics will test your connection speed and stability&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_network_info.xml"
+            line="320"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Privacy &amp; Security&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Privacy &amp;amp; Security&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_privacy_security.xml"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Security&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Security&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_privacy_security.xml"
+            line="57"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Profile&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Profile&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;localUser_99&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;localUser_99&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="115"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Connected to: Local Network&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;Connected to: Local Network&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="152"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Disconnect&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Disconnect&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="197"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Log Out of Account&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Log Out of Account&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="211"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LANflix Android v1.0.0&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;LANflix Android v1.0.0&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_profile.xml"
+            line="222"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LANflix&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;LANflix&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_splash.xml"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LANflix&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;LANflix&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="67"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;ONLINE&quot;, should use `@string` resource"
+        errorLine1="                                    android:text=&quot;ONLINE&quot;"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="157"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LANflix Server&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;LANflix Server&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="180"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;192.168.1.50&quot;, should use `@string` resource"
+        errorLine1="                                    android:text=&quot;192.168.1.50&quot;"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="203"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Stop&quot;, should use `@string` resource"
+        errorLine1="                            android:text=&quot;Stop&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="215"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;UPTIME&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;UPTIME&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="246"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0m&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0m&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="255"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LOAD&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;LOAD&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="270"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0%&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0%&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="279"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Speed&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Speed&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="334"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="343"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Library&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Library&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="384"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="393"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Devices&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Devices&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="443"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="452"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Streaming&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;Streaming&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="493"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;0&quot;, should use `@string` resource"
+        errorLine1="                                android:text=&quot;0&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="502"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Include Subfolders&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;Include Subfolders&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="539"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;SYNC LIBRARY&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;SYNC LIBRARY&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="560"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;MYVIDEOS\n/NETWORK&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;MYVIDEOS\n/NETWORK&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="577"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LOGS&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;LOGS&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="608"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;DASHBOARD&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;DASHBOARD&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="627"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;> System Ready...&quot;, should use `@string` resource"
+        errorLine1="                        android:text=&quot;> System Ready...&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_streaming.xml"
+            line="661"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LANflix&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;LANflix&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="57"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LOCAL STREAMING. SIMPLIFIED.&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;LOCAL STREAMING. SIMPLIFIED.&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="66"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Stream your library in high quality, anywhere on your local network.&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;Stream your library in high quality, anywhere on your local network.&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="76"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;PICK A USERNAME&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;PICK A USERNAME&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="95"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;e.g. MovieBuff&quot;, should use `@string` resource"
+        errorLine1="                        android:hint=&quot;e.g. MovieBuff&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="113"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Get Started&quot;, should use `@string` resource"
+        errorLine1="                    android:text=&quot;Get Started&quot;"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_welcome.xml"
+            line="129"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Edit Username&quot;, should use `@string` resource"
+        errorLine1="            android:text=&quot;Edit Username&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_edit_username.xml"
+            line="22"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Username&quot;, should use `@string` resource"
+        errorLine1="            android:hint=&quot;Username&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_edit_username.xml"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Cancel&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Cancel&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_edit_username.xml"
+            line="69"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Save&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Save&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_edit_username.xml"
+            line="83"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Option Title&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Option Title&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="41"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Subtitle description&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Subtitle description&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option.xml"
+            line="50"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Option Title&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Option Title&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option_toggle.xml"
+            line="41"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Subtitle description&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Subtitle description&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_profile_option_toggle.xml"
+            line="50"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;LANflix Server&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;LANflix Server&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_server_discovered.xml"
+            line="38"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;192.168.1.5&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;192.168.1.5&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_server_discovered.xml"
+            line="47"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Inception.mp4&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;Inception.mp4&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_video_management.xml"
+            line="57"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;2.4 GB&quot;, should use `@string` resource"
+        errorLine1="                android:text=&quot;2.4 GB&quot;"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_video_management.xml"
+            line="68"
+            column="17"/>
+    </issue>
+
+</issues>
